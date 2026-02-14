@@ -18,10 +18,11 @@ export const useFirebase = () => {
   const { db, storage } = getFirebaseInstances();
 
   // Create a new call
-  const createCall = async (hostId) => {
+  const createCall = async (hostId, roomUrl = '') => {
     try {
       const callData = {
         hostId,
+        roomUrl,
         participants: [],
         startTime: Timestamp.now(),
         endTime: null,

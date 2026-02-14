@@ -11,7 +11,7 @@ export const useAuth0 = () => {
   const logout = () => {
     auth0.logout({
       logoutParams: {
-        returnTo: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+        returnTo: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000/'
       }
     });
   };

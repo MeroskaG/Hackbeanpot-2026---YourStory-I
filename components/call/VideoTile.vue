@@ -4,38 +4,54 @@
       ref="videoElement"
       autoplay
       playsinline
-      :muted="isSelf"
+      :muted="participant.isLocal"
       class="w-full h-full object-cover"
     ></video>
 
     <!-- Name Label -->
     <div class="absolute bottom-4 left-4 bg-black bg-opacity-60 px-3 py-1 rounded-lg">
-      <span class="text-white text-sm font-medium">{{ name }}</span>
+      <span class="text-white text-sm font-medium">
+        {{ participant.name }}{{ participant.isLocal ? ' (You)' : '' }}
+      </span>
     </div>
 
-    <!-- Audio Indicator (if muted) -->
-    <div v-if="isMuted" class="absolute top-4 right-4 bg-red-600 p-2 rounded-full">
-      <span class="text-white text-sm">🔇</span>
+    <!-- Audio/Video Status Indicators -->
+    <div class="absolute top-4 right-4 flex space-x-2">
+      <div v-if="!participant.audioEnabled" class="bg-red-600 p-2 rounded-full">
+        <span class="text-white text-sm">🔇</span>
+      </div>
+      <div v-if="!participant.videoEnabled" class="bg-red-600 p-2 rounded-full">
+        <span class="text-white text-sm">📹</span>
+      </div>
+    </div>
+
+    <!-- Placeholder when video is off -->
+    <div 
+      v-if="!participant.videoEnabled" 
+      class="absolute inset-0 flex items-center justify-center bg-gray-700"
+    >
+      <div class="text-center">
+        <div class="w-20 h-20 bg-gray-600 rounded-full flex items-center justify-center mx-auto mb-2">
+          <span class="text-3xl text-white">👤</span>
+        </div>
+        <span class="text-white text-sm">{{ participant.name }}</span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-// Video Tile - Single participant video display
+// Video Tile - Single participant video from Daily.co
 const props = defineProps({
-  stream: {
-    type: Object,
-    default: null
-  },
-  name: {
+  participantId: {
     type: String,
-    default: 'Unknown'
+    required: true
   },
-  isSelf: {
-    type: Boolean,
-    default: false
+  participant: {
+    type: Object,
+    required: true
   },
-  isMuted: {
+  isHost: {
     type: Boolean,
     default: false
   }
@@ -43,16 +59,18 @@ const props = defineProps({
 
 const videoElement = ref(null);
 
-// Set stream when component mounts or stream changes
-watch(() => props.stream, (newStream) => {
-  if (videoElement.value && newStream) {
-    videoElement.value.srcObject = newStream;
+// Update video track when it changes
+watch(() => props.participant.videoTrack, (newTrack) => {
+  if (videoElement.value && newTrack) {
+    const stream = new MediaStream([newTrack]);
+    videoElement.value.srcObject = stream;
   }
 }, { immediate: true });
 
 onMounted(() => {
-  if (videoElement.value && props.stream) {
-    videoElement.value.srcObject = props.stream;
+  if (videoElement.value && props.participant.videoTrack) {
+    const stream = new MediaStream([props.participant.videoTrack]);
+    videoElement.value.srcObject = stream;
   }
 });
 </script>

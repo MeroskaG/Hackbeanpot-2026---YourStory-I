@@ -143,7 +143,18 @@ const handleStartNewCall = async () => {
   creatingCall.value = true;
   try {
     const userId = user.value?.sub || 'anonymous';
-    const call = await createCall(userId);
+    
+    // Create Daily room first
+    const roomResponse = await $fetch('/api/call/create-room', {
+      method: 'POST'
+    });
+    
+    if (!roomResponse.success) {
+      throw new Error('Failed to create room');
+    }
+    
+    // Create call with room URL
+    const call = await createCall(userId, roomResponse.roomUrl);
     currentCallId.value = call.callId;
     showInviteModal.value = true;
   } catch (error) {

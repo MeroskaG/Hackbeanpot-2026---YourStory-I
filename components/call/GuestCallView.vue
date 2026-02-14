@@ -2,14 +2,14 @@
   <div class="h-screen bg-gray-900 flex flex-col">
     <!-- Video Grid (takes most of the screen) -->
     <div class="flex-1 p-4">
-      <VideoGrid :localStream="localStream" :isHost="false" />
+      <VideoGrid :isHost="false" />
     </div>
 
     <!-- Bottom Control Panel -->
     <div class="bg-gray-800 border-t border-gray-700 p-4">
       <div class="max-w-4xl mx-auto flex items-center justify-center space-x-4">
-        <MuteButton @toggle="toggleMute" :isMuted="isMuted" />
-        <CameraButton @toggle="toggleCamera" :isCameraOff="isCameraOff" />
+        <MuteButton @toggle="toggleMute" :isMuted="!isMicEnabled" />
+        <CameraButton @toggle="toggleCamera" :isCameraOff="!isCameraEnabled" />
         <LeaveCallButton @leave="handleLeave" />
       </div>
     </div>
@@ -18,40 +18,61 @@
 
 <script setup>
 // Guest Call View - Minimal interface for family members joining via link
-// Only shows video grid and basic controls (mute, camera, leave)
+// Uses Daily.co for video calling
 const props = defineProps({
   callId: {
     type: String,
     required: true
   },
-  localStream: {
-    type: Object,
-    default: null
+  roomUrl: {
+    type: String,
+    required: true
   }
 });
 
 const emit = defineEmits(['leave']);
 
-const { toggleMicrophone, toggleCamera: toggleCameraWebRTC } = useWebRTC();
-const isMuted = ref(false);
-const isCameraOff = ref(false);
+const { 
+  joinRoom, 
+  leaveCall, 
+  toggleMicrophone, 
+  toggleCamera: toggleCameraWebRTC,
+  isMicEnabled,
+  isCameraEnabled
+} = useWebRTC();
+
+// Join Daily room on mount
+onMounted(async () => {
+  try {
+    const guestName = sessionStorage.getItem('guestName') || 'Guest';
+    await joinRoom(props.roomUrl, guestName);
+  } catch (error) {
+    console.error('Error joining room:', error);
+    alert('Failed to join call');
+    emit('leave');
+  }
+});
 
 // Toggle mute
 const toggleMute = () => {
-  const enabled = toggleMicrophone();
-  isMuted.value = !enabled;
+  toggleMicrophone();
 };
 
 // Toggle camera
 const toggleCamera = () => {
-  const enabled = toggleCameraWebRTC();
-  isCameraOff.value = !enabled;
+  toggleCameraWebRTC();
 };
 
 // Handle leave
-const handleLeave = () => {
+const handleLeave = async () => {
   if (confirm('Are you sure you want to leave the call?')) {
+    await leaveCall();
     emit('leave');
   }
 };
+
+// Cleanup on unmount
+onBeforeUnmount(async () => {
+  await leaveCall();
+});
 </script>

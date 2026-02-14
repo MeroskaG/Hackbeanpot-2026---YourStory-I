@@ -1,40 +1,42 @@
 <template>
-  <div class="grid gap-4" :class="gridClass">
-    <!-- Local Video (You) -->
+  <div class="grid gap-4 h-full" :class="gridClass">
+    <!-- Render all participants from Daily.co -->
     <VideoTile
-      :stream="localStream"
-      :name="isHost ? 'You (Host)' : 'You'"
-      :isSelf="true"
+      v-for="[id, participant] in participants"
+      :key="id"
+      :participantId="id"
+      :participant="participant"
+      :isHost="isHost"
     />
     
-    <!-- Remote Videos (Other Participants) -->
-    <!-- Placeholder for MVP - would connect to WebRTC peers in full implementation -->
+    <!-- Empty state if no participants yet -->
+    <div v-if="participants.size === 0" class="flex items-center justify-center text-white text-lg">
+      Connecting to call...
+    </div>
   </div>
 </template>
 
 <script setup>
-// Video Grid - Displays all participant videos in grid layout
+// Video Grid - Displays all participant videos from Daily.co
 const props = defineProps({
-  localStream: {
-    type: Object,
-    default: null
-  },
   isHost: {
     type: Boolean,
     default: false
   }
 });
 
+const { participants } = useWebRTC();
+
 const participantCount = computed(() => {
-  // In full implementation, this would be the actual participant count
-  return 1; // Just local for MVP
+  return participants.value.size;
 });
 
 const gridClass = computed(() => {
   const count = participantCount.value;
-  if (count === 1) return 'grid-cols-1';
+  if (count === 0 || count === 1) return 'grid-cols-1';
   if (count === 2) return 'grid-cols-2';
-  if (count <= 4) return 'grid-cols-2';
-  return 'grid-cols-3';
+  if (count <= 4) return 'grid-cols-2 grid-rows-2';
+  if (count <= 6) return 'grid-cols-3 grid-rows-2';
+  return 'grid-cols-3 grid-rows-3';
 });
 </script>

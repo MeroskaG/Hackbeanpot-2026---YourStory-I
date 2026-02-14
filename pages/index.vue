@@ -39,13 +39,22 @@ const { login, isLoading, isAuthenticated } = useAuth0();
 const router = useRouter();
 
 // Redirect if already authenticated
-watch(isAuthenticated, (authenticated) => {
-  if (authenticated) {
+onMounted(() => {
+  if (isAuthenticated.value && !isLoading.value) {
+    console.log('User already authenticated, redirecting to collections');
     router.push('/collections');
   }
-}, { immediate: true });
+});
+
+watch(isAuthenticated, (authenticated) => {
+  if (authenticated && !isLoading.value) {
+    console.log('User authenticated, redirecting to collections');
+    router.push('/collections');
+  }
+});
 
 const handleLogin = () => {
+  console.log('Starting login process');
   login();
 };
 </script>

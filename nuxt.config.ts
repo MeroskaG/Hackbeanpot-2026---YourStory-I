@@ -15,6 +15,7 @@ export default defineNuxtConfig({
     auth0ClientId: process.env.AUTH0_CLIENT_ID,
     auth0ClientSecret: process.env.AUTH0_CLIENT_SECRET,
     geminiApiKey: process.env.GEMINI_API_KEY,
+    dailyApiKey: process.env.DAILY_API_KEY,
     solanaNetwork: process.env.SOLANA_NETWORK || 'devnet',
     solanaRpcUrl: process.env.SOLANA_RPC_URL,
     solanaWalletSecretKey: process.env.SOLANA_WALLET_SECRET_KEY,
@@ -29,7 +30,8 @@ export default defineNuxtConfig({
       firebaseProjectId: process.env.FIREBASE_PROJECT_ID,
       firebaseStorageBucket: process.env.FIREBASE_STORAGE_BUCKET,
       firebaseMessagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-      firebaseAppId: process.env.FIREBASE_APP_ID
+      firebaseAppId: process.env.FIREBASE_APP_ID,
+      dailyApiKey: process.env.DAILY_API_KEY
     }
   },
 
