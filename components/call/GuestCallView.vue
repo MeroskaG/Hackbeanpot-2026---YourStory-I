@@ -2,15 +2,15 @@
   <div class="h-screen bg-gray-900 flex flex-col">
     <!-- Video Grid (takes most of the screen) -->
     <div class="flex-1 p-4">
-      <VideoGrid :isHost="false" />
+      <CallVideoGrid :isHost="false" />
     </div>
 
     <!-- Bottom Control Panel -->
     <div class="bg-gray-800 border-t border-gray-700 p-4">
       <div class="max-w-4xl mx-auto flex items-center justify-center space-x-4">
-        <MuteButton @toggle="toggleMute" :isMuted="!isMicEnabled" />
-        <CameraButton @toggle="toggleCamera" :isCameraOff="!isCameraEnabled" />
-        <LeaveCallButton @leave="handleLeave" />
+        <CallMuteButton @toggle="toggleMute" :isMuted="!isMicEnabled" />
+        <CallCameraButton @toggle="toggleCamera" :isCameraOff="!isCameraEnabled" />
+        <CallLeaveCallButton @leave="handleLeave" />
       </div>
     </div>
   </div>

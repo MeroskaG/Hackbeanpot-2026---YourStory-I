@@ -62,15 +62,47 @@ const videoElement = ref(null);
 // Update video track when it changes
 watch(() => props.participant.videoTrack, (newTrack) => {
   if (videoElement.value && newTrack) {
+    console.log('Setting video track for', props.participant.name, newTrack);
     const stream = new MediaStream([newTrack]);
     videoElement.value.srcObject = stream;
+  } else if (videoElement.value && !newTrack) {
+    videoElement.value.srcObject = null;
+  }
+}, { immediate: true });
+
+// Also watch for audio track
+watch(() => props.participant.audioTrack, (newTrack) => {
+  if (videoElement.value && newTrack && !props.participant.isLocal) {
+    // Add audio track to the stream
+    const currentStream = videoElement.value.srcObject;
+    if (currentStream) {
+      const audioTracks = currentStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        currentStream.addTrack(newTrack);
+      }
+    } else {
+      const stream = new MediaStream([newTrack]);
+      videoElement.value.srcObject = stream;
+    }
   }
 }, { immediate: true });
 
 onMounted(() => {
-  if (videoElement.value && props.participant.videoTrack) {
-    const stream = new MediaStream([props.participant.videoTrack]);
-    videoElement.value.srcObject = stream;
+  console.log('VideoTile mounted for', props.participant.name, {
+    hasVideo: !!props.participant.videoTrack,
+    hasAudio: !!props.participant.audioTrack,
+    videoEnabled: props.participant.videoEnabled
+  });
+  
+  if (videoElement.value) {
+    const tracks = [];
+    if (props.participant.videoTrack) tracks.push(props.participant.videoTrack);
+    if (props.participant.audioTrack && !props.participant.isLocal) tracks.push(props.participant.audioTrack);
+    
+    if (tracks.length > 0) {
+      const stream = new MediaStream(tracks);
+      videoElement.value.srcObject = stream;
+    }
   }
 });
 </script>

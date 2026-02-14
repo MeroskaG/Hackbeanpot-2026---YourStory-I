@@ -10,31 +10,13 @@
             <span class="text-xl font-bold text-gray-900">Family Stories</span>
           </div>
 
-          <!-- User Profile Dropdown -->
-          <div class="relative" v-if="user">
-            <button 
-              @click="showDropdown = !showDropdown"
-              class="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100"
-            >
-              <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                {{ getUserInitials(user.name || user.email) }}
-              </div>
-              <span class="text-sm text-gray-700">{{ user.name || user.email }}</span>
-            </button>
-
-            <!-- Dropdown Menu -->
-            <div 
-              v-if="showDropdown" 
-              class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-10"
-            >
-              <button 
-                @click="handleSignOut"
-                class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
+          <!-- Back to Home -->
+          <button 
+            @click="goHome"
+            class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
+          >
+            Home
+          </button>
         </div>
       </div>
     </nav>
@@ -95,16 +77,10 @@
 </template>
 
 <script setup>
-// Collections Page - Shows family members and their stories (Host only)
-definePageMeta({
-  middleware: 'auth'
-});
-
-const { user, logout } = useAuth0();
+// Collections Page - Shows family members and their stories
 const { createCall, getFamilyMembers } = useFirebase();
 const router = useRouter();
 
-const showDropdown = ref(false);
 const loading = ref(true);
 const creatingCall = ref(false);
 const familyMembers = ref([]);
@@ -122,27 +98,16 @@ onMounted(async () => {
   }
 });
 
-// Get user initials for avatar
-const getUserInitials = (name) => {
-  if (!name) return '?';
-  const parts = name.split(' ');
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-  return name.substring(0, 2).toUpperCase();
-};
-
-// Handle sign out
-const handleSignOut = () => {
-  logout();
-  showDropdown.value = false;
+// Go back to home
+const goHome = () => {
+  router.push('/');
 };
 
 // Start new call
 const handleStartNewCall = async () => {
   creatingCall.value = true;
   try {
-    const userId = user.value?.sub || 'anonymous';
+    const userId = 'user-' + Date.now(); // Simple user ID generation
     
     // Create Daily room first
     const roomResponse = await $fetch('/api/call/create-room', {
@@ -156,6 +121,10 @@ const handleStartNewCall = async () => {
     // Create call with room URL
     const call = await createCall(userId, roomResponse.roomUrl);
     currentCallId.value = call.callId;
+    
+    // Mark user as host in session storage
+    sessionStorage.setItem('isHost', 'true');
+    
     showInviteModal.value = true;
   } catch (error) {
     console.error('Error creating call:', error);

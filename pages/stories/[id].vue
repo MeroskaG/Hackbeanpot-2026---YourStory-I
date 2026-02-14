@@ -123,10 +123,6 @@
 
 <script setup>
 // Story Detail Page - View individual story with video, summary, transcript
-definePageMeta({
-  middleware: 'auth'
-});
-
 const route = useRoute();
 const router = useRouter();
 const { getStory } = useFirebase();

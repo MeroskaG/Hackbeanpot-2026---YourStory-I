@@ -53,10 +53,6 @@
 
 <script setup>
 // Collections Detail Page - Shows stories for a specific family member
-definePageMeta({
-  middleware: 'auth'
-});
-
 const route = useRoute();
 const router = useRouter();
 const { getStoriesBySpeaker } = useFirebase();

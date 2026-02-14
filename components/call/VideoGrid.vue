@@ -1,16 +1,16 @@
 <template>
   <div class="grid gap-4 h-full" :class="gridClass">
     <!-- Render all participants from Daily.co -->
-    <VideoTile
-      v-for="[id, participant] in participants"
-      :key="id"
-      :participantId="id"
+    <CallVideoTile
+      v-for="participant in participants"
+      :key="participant.id"
+      :participantId="participant.id"
       :participant="participant"
       :isHost="isHost"
     />
     
     <!-- Empty state if no participants yet -->
-    <div v-if="participants.size === 0" class="flex items-center justify-center text-white text-lg">
+    <div v-if="participants.length === 0" class="flex items-center justify-center text-white text-lg">
       Connecting to call...
     </div>
   </div>
@@ -28,7 +28,7 @@ const props = defineProps({
 const { participants } = useWebRTC();
 
 const participantCount = computed(() => {
-  return participants.value.size;
+  return participants.value.length;
 });
 
 const gridClass = computed(() => {

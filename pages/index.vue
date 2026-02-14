@@ -9,18 +9,17 @@
       <p class="text-lg text-gray-600">Preserve your family's heritage, one story at a time</p>
     </div>
 
-    <!-- Authentication Card -->
+    <!-- Action Card -->
     <div class="card max-w-md w-full">
       <button 
-        @click="handleLogin" 
-        :disabled="isLoading"
+        @click="goToCollections" 
         class="btn-primary w-full text-lg"
       >
-        {{ isLoading ? 'Loading...' : 'Sign In' }}
+        Get Started
       </button>
       
       <p class="text-sm text-gray-500 text-center mt-4">
-        Joining a family call? No login needed - just click the link!
+        Start recording your family's stories and memories
       </p>
     </div>
 
@@ -34,28 +33,11 @@
 </template>
 
 <script setup>
-// Sign In Page - Host authentication using Auth0
-const { login, isLoading, isAuthenticated } = useAuth0();
+// Home Page - Entry point to the application
 const router = useRouter();
 
-// Redirect if already authenticated
-onMounted(() => {
-  if (isAuthenticated.value && !isLoading.value) {
-    console.log('User already authenticated, redirecting to collections');
-    router.push('/collections');
-  }
-});
-
-watch(isAuthenticated, (authenticated) => {
-  if (authenticated && !isLoading.value) {
-    console.log('User authenticated, redirecting to collections');
-    router.push('/collections');
-  }
-});
-
-const handleLogin = () => {
-  console.log('Starting login process');
-  login();
+const goToCollections = () => {
+  router.push('/collections');
 };
 </script>
 

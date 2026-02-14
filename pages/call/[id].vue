@@ -1,14 +1,14 @@
 <template>
   <div class="h-screen bg-gray-900">
     <!-- Show different views based on user type -->
-    <GuestCallView 
+    <CallGuestCallView 
       v-if="!isHost && hasJoined"
       :callId="callId"
       :roomUrl="roomUrl"
       @leave="handleLeave"
     />
     
-    <HostCallView 
+    <CallHostCallView 
       v-else-if="isHost && hasJoined"
       :callId="callId"
       :roomUrl="roomUrl"
@@ -16,7 +16,7 @@
     />
     
     <!-- Pre-Join Screen -->
-    <PreJoinScreen 
+    <CallPreJoinScreen 
       v-else
       :isHost="isHost"
       @join="handleJoin"
@@ -29,11 +29,13 @@
 // Different views for guests (simple) vs hosts (full featured)
 const route = useRoute();
 const router = useRouter();
-const { isAuthenticated } = useAuth0();
 const { getCall } = useFirebase();
 
 const callId = computed(() => route.params.id);
-const isHost = computed(() => isAuthenticated.value);
+// Check if user is host by looking at URL parameter or session storage
+const isHost = computed(() => {
+  return route.query.host === 'true' || sessionStorage.getItem('isHost') === 'true';
+});
 const hasJoined = ref(false);
 const roomUrl = ref('');
 

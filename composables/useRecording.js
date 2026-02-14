@@ -1,11 +1,13 @@
 // Composable for recording video/audio during calls (host only)
+// Shared state across all instances (singleton pattern)
+const mediaRecorder = ref(null);
+const recordedChunks = ref([]);
+const isRecording = ref(false);
+const currentSpeaker = ref('');
+const speakerSegments = ref([]);
+const recordingStartTime = ref(null);
+
 export const useRecording = () => {
-  const mediaRecorder = ref(null);
-  const recordedChunks = ref([]);
-  const isRecording = ref(false);
-  const currentSpeaker = ref('');
-  const speakerSegments = ref([]);
-  const recordingStartTime = ref(null);
 
   // Start recording
   const startRecording = async (stream) => {

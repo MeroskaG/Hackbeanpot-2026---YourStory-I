@@ -1,20 +1,22 @@
 // Composable for Daily.co video calling
 import DailyIframe from '@daily-co/daily-js';
 
+// Shared state across all instances (singleton pattern)
+let callObject = null;
+const localStream = ref(null);
+const participants = ref([]);
+const isConnected = ref(false);
+const isJoining = ref(false);
+const error = ref(null);
+const isMicEnabled = ref(true);
+const isCameraEnabled = ref(true);
+
 export const useWebRTC = () => {
-  const callObject = ref(null);
-  const localStream = ref(null);
-  const participants = ref(new Map());
-  const isConnected = ref(false);
-  const isJoining = ref(false);
-  const error = ref(null);
-  const isMicEnabled = ref(true);
-  const isCameraEnabled = ref(true);
 
   // Initialize Daily call object
   const initializeCall = (roomUrl) => {
-    if (!callObject.value) {
-      callObject.value = DailyIframe.createCallObject({
+    if (!callObject) {
+      callObject = DailyIframe.createCallObject({
         audioSource: true,
         videoSource: true
       });
@@ -22,20 +24,21 @@ export const useWebRTC = () => {
       // Set up event listeners
       setupEventListeners();
     }
-    return callObject.value;
+    return callObject;
   };
 
   // Set up Daily event listeners
   const setupEventListeners = () => {
-    if (!callObject.value) return;
+    if (!callObject) return;
 
     // Call state events
-    callObject.value.on('joined-meeting', handleJoinedMeeting);
-    callObject.value.on('left-meeting', handleLeftMeeting);
-    callObject.value.on('participant-joined', handleParticipantJoined);
-    callObject.value.on('participant-updated', handleParticipantUpdated);
-    callObject.value.on('participant-left', handleParticipantLeft);
-    callObject.value.on('error', handleError);
+    callObject.on('joined-meeting', handleJoinedMeeting);
+    callObject.on('left-meeting', handleLeftMeeting);
+    callObject.on('participant-joined', handleParticipantJoined);
+    callObject.on('participant-updated', handleParticipantUpdated);
+    callObject.on('participant-left', handleParticipantLeft);
+    callObject.on('track-started', handleTrackStarted);
+    callObject.on('error', handleError);
   };
 
   // Handle joined meeting
@@ -52,7 +55,7 @@ export const useWebRTC = () => {
   const handleLeftMeeting = (event) => {
     console.log('Left meeting', event);
     isConnected.value = false;
-    participants.value.clear();
+    participants.value = [];
   };
 
   // Handle participant joined
@@ -73,6 +76,12 @@ export const useWebRTC = () => {
     updateParticipants();
   };
 
+  // Handle track started (when video/audio track becomes available)
+  const handleTrackStarted = (event) => {
+    console.log('Track started', event);
+    updateParticipants();
+  };
+
   // Handle errors
   const handleError = (event) => {
     console.error('Daily error', event);
@@ -81,24 +90,28 @@ export const useWebRTC = () => {
 
   // Update participants list
   const updateParticipants = () => {
-    if (!callObject.value) return;
+    if (!callObject) return;
 
-    const dailyParticipants = callObject.value.participants();
-    const newParticipants = new Map();
-
-    Object.entries(dailyParticipants).forEach(([id, participant]) => {
-      newParticipants.set(id, {
+    const dailyParticipants = callObject.participants();
+    
+    // Convert to array for Vue reactivity
+    participants.value = Object.entries(dailyParticipants).map(([id, participant]) => {
+      // Extract tracks properly from Daily participant object
+      const audioTrack = participant.tracks?.audio?.persistentTrack || participant.tracks?.audio?.track;
+      const videoTrack = participant.tracks?.video?.persistentTrack || participant.tracks?.video?.track;
+      
+      return {
         id,
         name: participant.user_name || 'Guest',
         isLocal: participant.local,
-        audioTrack: participant.tracks?.audio?.track,
-        videoTrack: participant.tracks?.video?.track,
-        audioEnabled: !participant.audio,
-        videoEnabled: !participant.video
-      });
+        audioTrack,
+        videoTrack,
+        audioEnabled: participant.audio,
+        videoEnabled: participant.video
+      };
     });
-
-    participants.value = newParticipants;
+    
+    console.log('Updated participants:', participants.value.length, participants.value);
   };
 
   // Join a Daily room
@@ -107,11 +120,11 @@ export const useWebRTC = () => {
       isJoining.value = true;
       error.value = null;
 
-      if (!callObject.value) {
+      if (!callObject) {
         initializeCall(roomUrl);
       }
 
-      await callObject.value.join({
+      await callObject.join({
         url: roomUrl,
         userName
       });
@@ -128,14 +141,14 @@ export const useWebRTC = () => {
   // Leave the call
   const leaveCall = async () => {
     try {
-      if (callObject.value) {
-        await callObject.value.leave();
-        await callObject.value.destroy();
-        callObject.value = null;
+      if (callObject) {
+        await callObject.leave();
+        await callObject.destroy();
+        callObject = null;
       }
       
       isConnected.value = false;
-      participants.value.clear();
+      participants.value = [];
       localStream.value = null;
     } catch (err) {
       console.error('Error leaving call:', err);
@@ -144,9 +157,9 @@ export const useWebRTC = () => {
 
   // Toggle microphone
   const toggleMicrophone = () => {
-    if (callObject.value) {
+    if (callObject) {
       const newState = !isMicEnabled.value;
-      callObject.value.setLocalAudio(newState);
+      callObject.setLocalAudio(newState);
       isMicEnabled.value = newState;
       return newState;
     }
@@ -155,9 +168,9 @@ export const useWebRTC = () => {
 
   // Toggle camera
   const toggleCamera = () => {
-    if (callObject.value) {
+    if (callObject) {
       const newState = !isCameraEnabled.value;
-      callObject.value.setLocalVideo(newState);
+      callObject.setLocalVideo(newState);
       isCameraEnabled.value = newState;
       return newState;
     }
@@ -195,11 +208,34 @@ export const useWebRTC = () => {
     }
   };
 
-  // Get recording stream for host
+  // Get recording stream for host (local stream only for now)
   const getRecordingStream = () => {
-    if (callObject.value) {
-      // Daily provides a method to get the mixed output
-      return callObject.value.startRecording();
+    if (callObject) {
+      try {
+        // Get local participant's tracks
+        const localParticipant = callObject.participants().local;
+        const tracks = [];
+        
+        // Add video track
+        if (localParticipant?.tracks?.video?.persistentTrack) {
+          tracks.push(localParticipant.tracks.video.persistentTrack);
+        } else if (localParticipant?.tracks?.video?.track) {
+          tracks.push(localParticipant.tracks.video.track);
+        }
+        
+        // Add audio track
+        if (localParticipant?.tracks?.audio?.persistentTrack) {
+          tracks.push(localParticipant.tracks.audio.persistentTrack);
+        } else if (localParticipant?.tracks?.audio?.track) {
+          tracks.push(localParticipant.tracks.audio.track);
+        }
+        
+        if (tracks.length > 0) {
+          return new MediaStream(tracks);
+        }
+      } catch (error) {
+        console.error('Error getting recording stream:', error);
+      }
     }
     return null;
   };
@@ -211,7 +247,7 @@ export const useWebRTC = () => {
   };
 
   // Expose Daily call object for advanced usage
-  const getCallObject = () => callObject.value;
+  const getCallObject = () => callObject;
 
   return {
     // State

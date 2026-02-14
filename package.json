@@ -12,7 +12,8 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@auth0/auth0-vue": "^2.5.0",    "@daily-co/daily-js": "^0.64.0",    "@google/generative-ai": "^0.21.0",
+    "@daily-co/daily-js": "^0.87.0",
+    "@google/generative-ai": "^0.21.0",
     "@pinia/nuxt": "^0.9.0",
     "firebase": "^11.1.0",
     "nuxt": "^3.14.159",

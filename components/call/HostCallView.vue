@@ -1,11 +1,11 @@
 <template>
   <div class="h-screen bg-gray-900 flex flex-col">
     <!-- Recording Indicator -->
-    <RecordingIndicator :isRecording="isRecording" />
+    <CallRecordingIndicator :isRecording="isRecording" />
 
     <!-- Video Grid -->
     <div class="flex-1 p-4">
-      <VideoGrid :isHost="true" />
+      <CallVideoGrid :isHost="true" />
     </div>
 
     <!-- Bottom Control Panel -->
@@ -13,13 +13,13 @@
       <div class="max-w-6xl mx-auto flex items-center justify-between">
         <!-- Left: Media Controls -->
         <div class="flex items-center space-x-4">
-          <MuteButton @toggle="toggleMute" :isMuted="!isMicEnabled" />
-          <CameraButton @toggle="toggleCamera" :isCameraOff="!isCameraEnabled" />
+          <CallMuteButton @toggle="toggleMute" :isMuted="!isMicEnabled" />
+          <CallCameraButton @toggle="toggleCamera" :isCameraOff="!isCameraEnabled" />
         </div>
 
         <!-- Center: Speaker Selector -->
         <div class="flex-1 px-8">
-          <SpeakerSelector
+          <CallSpeakerSelector
             :participants="participantNames"
             :currentSpeaker="currentSpeaker"
             @select="handleSpeakerSelect"
@@ -28,8 +28,8 @@
 
         <!-- Right: Call Actions -->
         <div class="flex items-center space-x-4">
-          <CopyLinkButton :callId="callId" />
-          <EndCallButton @end="handleEndCall" />
+          <CallCopyLinkButton :callId="callId" />
+          <CallEndCallButton @end="handleEndCall" />
         </div>
       </div>
     </div>
@@ -60,15 +60,21 @@ const {
   participants,
   isMicEnabled,
   isCameraEnabled,
-  getCallObject
+  getCallObject,
+  getRecordingStream
 } = useWebRTC();
 
-const { setSpeaker, currentSpeaker } = useRecording();
+const { 
+  setSpeaker, 
+  currentSpeaker, 
+  startRecording, 
+  stopRecording, 
+  isRecording,
+  speakerSegments 
+} = useRecording();
+
 const { createStory, uploadFile, endCall, updateCall } = useFirebase();
 const { processStory } = useGemini();
-
-const isRecording = ref(false);
-const recordingId = ref('');
 
 // Get participant names
 const participantNames = computed(() => {
@@ -87,8 +93,8 @@ onMounted(async () => {
     const hostName = 'Host';
     await joinRoom(props.roomUrl, hostName);
     
-    // Start Daily cloud recording
-    await startDailyRecording();
+    // Start local browser recording
+    await startLocalRecording();
     
     // Update call participants
     await updateCall(props.callId, {
@@ -101,32 +107,32 @@ onMounted(async () => {
   }
 });
 
-// Start Daily cloud recording
-const startDailyRecording = async () => {
+// Start local browser recording
+const startLocalRecording = async () => {
   try {
-    const callObject = getCallObject();
-    if (callObject) {
-      const recording = await callObject.startRecording();
-      isRecording.value = true;
-      recordingId.value = recording.recordingId;
-      console.log('Recording started:', recordingId.value);
+    // Wait a moment for Daily to fully connect
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const stream = getRecordingStream();
+    if (stream) {
+      await startRecording(stream);
+      console.log('Local recording started');
+    } else {
+      console.warn('No recording stream available');
     }
   } catch (error) {
-    console.error('Error starting recording:', error);
+    console.error('Error starting local recording:', error);
   }
 };
 
-// Stop Daily cloud recording
-const stopDailyRecording = async () => {
+// Stop local browser recording
+const stopLocalRecording = async () => {
   try {
-    const callObject = getCallObject();
-    if (callObject && recordingId.value) {
-      await callObject.stopRecording(recordingId.value);
-      isRecording.value = false;
-      console.log('Recording stopped');
-    }
+    const recordingBlob = await stopRecording();
+    return recordingBlob;
   } catch (error) {
     console.error('Error stopping recording:', error);
+    return null;
   }
 };
 
@@ -147,38 +153,72 @@ const handleSpeakerSelect = (speaker) => {
 
 // Handle end call
 const handleEndCall = async () => {
-  if (!confirm('Are you sure you want to end the call? This will process all recordings.')) {
+  if (!confirm('Are you sure you want to end the call? This will save and process the recording.')) {
     return;
   }
 
   try {
-    // Stop recording
-    await stopDailyRecording();
+    // Stop local recording and get blob
+    const recordingBlob = await stopLocalRecording();
     
-    // In a production app, you would:
-    // 1. Wait for Daily to process the recording
-    // 2. Download the recording URL from Daily
-    // 3. Save it to your storage
-    // 4. Process with AI
+    if (!recordingBlob) {
+      alert('No recording available. The call will end without saving.');
+      await leaveCall();
+      emit('leave');
+      return;
+    }
     
-    // For MVP, we'll just end the call
+    // Show processing message
+    alert('Processing recording... This may take a moment.');
+    
+    // Upload recording to Firebase Storage
+    const timestamp = Date.now();
+    const filename = `recordings/${props.callId}_${timestamp}.webm`;
+    const videoUrl = await uploadFile(recordingBlob, filename);
+    
+    console.log('Recording uploaded:', videoUrl);
+    
+    // Create story with the recording
+    const storyData = {
+      callId: props.callId,
+      videoUrl,
+      speakerName: currentSpeaker.value || participantNames.value[0] || 'Guest',
+      speakerSegments: speakerSegments.value,
+      duration: recordingBlob.size,
+      createdAt: new Date(),
+      processed: false
+    };
+    
+    const storyId = await createStory(storyData);
+    console.log('Story created:', storyId);
+    
+    // Optionally: Process with Gemini AI in the background
+    // This can be moved to a separate background task
+    try {
+      await processStory(storyId, videoUrl);
+    } catch (aiError) {
+      console.warn('AI processing failed, but recording saved:', aiError);
+    }
+    
+    // Mark call as ended
     await endCall(props.callId);
     
     // Leave the Daily room
     await leaveCall();
     
-    // Navigate back
+    // Navigate to the story or collections
+    alert('Recording saved successfully!');
     emit('leave');
   } catch (error) {
     console.error('Error ending call:', error);
-    alert('Error ending call. Please try again.');
+    alert('Error saving recording: ' + error.message);
   }
 };
 
 // Cleanup on unmount
 onBeforeUnmount(async () => {
   if (isRecording.value) {
-    await stopDailyRecording();
+    await stopLocalRecording();
   }
   await leaveCall();
 });
