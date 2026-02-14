@@ -454,4 +454,4 @@ For issues or questions:
 ---
 
 **Happy storytelling! 👨‍👩‍👧‍👦📖✨**
-HackBeanPot 2026 project that will aid in remebering ones heritage through family story using our webpage. 
+HackBeanPot 2026 project that will aid in remembering ones heritage through family story using our webpage. 
