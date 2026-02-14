@@ -1,13 +1,183 @@
-// Composable for WebRTC video calling
-// Simplified WebRTC implementation for MVP
-export const useWebRTC = () => {
-  const localStream = ref(null);
-  const remoteStreams = ref(new Map());
-  const peers = ref(new Map());
-  const isConnected = ref(false);
-  const error = ref(null);
+// Composable for Daily.co video calling
+import DailyIframe from '@daily-co/daily-js';
 
-  // Get user media (camera and microphone)
+// Shared state across all instances (singleton pattern)
+let callObject = null;
+const localStream = ref(null);
+const participants = ref([]);
+const isConnected = ref(false);
+const isJoining = ref(false);
+const error = ref(null);
+const isMicEnabled = ref(true);
+const isCameraEnabled = ref(true);
+
+export const useWebRTC = () => {
+
+  // Initialize Daily call object
+  const initializeCall = (roomUrl) => {
+    if (!callObject) {
+      callObject = DailyIframe.createCallObject({
+        audioSource: true,
+        videoSource: true
+      });
+
+      // Set up event listeners
+      setupEventListeners();
+    }
+    return callObject;
+  };
+
+  // Set up Daily event listeners
+  const setupEventListeners = () => {
+    if (!callObject) return;
+
+    // Call state events
+    callObject.on('joined-meeting', handleJoinedMeeting);
+    callObject.on('left-meeting', handleLeftMeeting);
+    callObject.on('participant-joined', handleParticipantJoined);
+    callObject.on('participant-updated', handleParticipantUpdated);
+    callObject.on('participant-left', handleParticipantLeft);
+    callObject.on('track-started', handleTrackStarted);
+    callObject.on('error', handleError);
+  };
+
+  // Handle joined meeting
+  const handleJoinedMeeting = (event) => {
+    console.log('Joined meeting', event);
+    isConnected.value = true;
+    isJoining.value = false;
+    
+    // Update local participant
+    updateParticipants();
+  };
+
+  // Handle left meeting
+  const handleLeftMeeting = (event) => {
+    console.log('Left meeting', event);
+    isConnected.value = false;
+    participants.value = [];
+  };
+
+  // Handle participant joined
+  const handleParticipantJoined = (event) => {
+    console.log('Participant joined', event);
+    updateParticipants();
+  };
+
+  // Handle participant updated
+  const handleParticipantUpdated = (event) => {
+    console.log('Participant updated', event);
+    updateParticipants();
+  };
+
+  // Handle participant left
+  const handleParticipantLeft = (event) => {
+    console.log('Participant left', event);
+    updateParticipants();
+  };
+
+  // Handle track started (when video/audio track becomes available)
+  const handleTrackStarted = (event) => {
+    console.log('Track started', event);
+    updateParticipants();
+  };
+
+  // Handle errors
+  const handleError = (event) => {
+    console.error('Daily error', event);
+    error.value = event.errorMsg || 'An error occurred';
+  };
+
+  // Update participants list
+  const updateParticipants = () => {
+    if (!callObject) return;
+
+    const dailyParticipants = callObject.participants();
+    
+    // Convert to array for Vue reactivity
+    participants.value = Object.entries(dailyParticipants).map(([id, participant]) => {
+      // Extract tracks properly from Daily participant object
+      const audioTrack = participant.tracks?.audio?.persistentTrack || participant.tracks?.audio?.track;
+      const videoTrack = participant.tracks?.video?.persistentTrack || participant.tracks?.video?.track;
+      
+      return {
+        id,
+        name: participant.user_name || 'Guest',
+        isLocal: participant.local,
+        audioTrack,
+        videoTrack,
+        audioEnabled: participant.audio,
+        videoEnabled: participant.video
+      };
+    });
+    
+    console.log('Updated participants:', participants.value.length, participants.value);
+  };
+
+  // Join a Daily room
+  const joinRoom = async (roomUrl, userName = 'Guest') => {
+    try {
+      isJoining.value = true;
+      error.value = null;
+
+      if (!callObject) {
+        initializeCall(roomUrl);
+      }
+
+      await callObject.join({
+        url: roomUrl,
+        userName
+      });
+
+      return true;
+    } catch (err) {
+      error.value = 'Failed to join call';
+      console.error('Error joining room:', err);
+      isJoining.value = false;
+      throw err;
+    }
+  };
+
+  // Leave the call
+  const leaveCall = async () => {
+    try {
+      if (callObject) {
+        await callObject.leave();
+        await callObject.destroy();
+        callObject = null;
+      }
+      
+      isConnected.value = false;
+      participants.value = [];
+      localStream.value = null;
+    } catch (err) {
+      console.error('Error leaving call:', err);
+    }
+  };
+
+  // Toggle microphone
+  const toggleMicrophone = () => {
+    if (callObject) {
+      const newState = !isMicEnabled.value;
+      callObject.setLocalAudio(newState);
+      isMicEnabled.value = newState;
+      return newState;
+    }
+    return false;
+  };
+
+  // Toggle camera
+  const toggleCamera = () => {
+    if (callObject) {
+      const newState = !isCameraEnabled.value;
+      callObject.setLocalVideo(newState);
+      isCameraEnabled.value = newState;
+      return newState;
+    }
+    return false;
+  };
+
+  // Get user media for preview (before joining)
   const getUserMedia = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -30,31 +200,7 @@ export const useWebRTC = () => {
     }
   };
 
-  // Toggle microphone
-  const toggleMicrophone = () => {
-    if (localStream.value) {
-      const audioTrack = localStream.value.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        return audioTrack.enabled;
-      }
-    }
-    return false;
-  };
-
-  // Toggle camera
-  const toggleCamera = () => {
-    if (localStream.value) {
-      const videoTrack = localStream.value.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        return videoTrack.enabled;
-      }
-    }
-    return false;
-  };
-
-  // Stop all tracks
+  // Stop preview tracks (before joining)
   const stopAllTracks = () => {
     if (localStream.value) {
       localStream.value.getTracks().forEach(track => track.stop());
@@ -62,23 +208,67 @@ export const useWebRTC = () => {
     }
   };
 
-  // Clean up
-  const cleanup = () => {
-    stopAllTracks();
-    peers.value.clear();
-    remoteStreams.value.clear();
-    isConnected.value = false;
+  // Get recording stream for host (local stream only for now)
+  const getRecordingStream = () => {
+    if (callObject) {
+      try {
+        // Get local participant's tracks
+        const localParticipant = callObject.participants().local;
+        const tracks = [];
+        
+        // Add video track
+        if (localParticipant?.tracks?.video?.persistentTrack) {
+          tracks.push(localParticipant.tracks.video.persistentTrack);
+        } else if (localParticipant?.tracks?.video?.track) {
+          tracks.push(localParticipant.tracks.video.track);
+        }
+        
+        // Add audio track
+        if (localParticipant?.tracks?.audio?.persistentTrack) {
+          tracks.push(localParticipant.tracks.audio.persistentTrack);
+        } else if (localParticipant?.tracks?.audio?.track) {
+          tracks.push(localParticipant.tracks.audio.track);
+        }
+        
+        if (tracks.length > 0) {
+          return new MediaStream(tracks);
+        }
+      } catch (error) {
+        console.error('Error getting recording stream:', error);
+      }
+    }
+    return null;
   };
 
+  // Clean up
+  const cleanup = async () => {
+    await leaveCall();
+    stopAllTracks();
+  };
+
+  // Expose Daily call object for advanced usage
+  const getCallObject = () => callObject;
+
   return {
+    // State
     localStream,
-    remoteStreams,
+    participants,
     isConnected,
+    isJoining,
     error,
-    getUserMedia,
+    isMicEnabled,
+    isCameraEnabled,
+    
+    // Methods
+    initializeCall,
+    joinRoom,
+    leaveCall,
     toggleMicrophone,
     toggleCamera,
+    getUserMedia,
     stopAllTracks,
-    cleanup
+    getRecordingStream,
+    cleanup,
+    getCallObject
   };
 };

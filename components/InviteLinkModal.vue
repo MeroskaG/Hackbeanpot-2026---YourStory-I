@@ -34,7 +34,7 @@
       <!-- Actions -->
       <div class="flex space-x-3">
         <button
-          @click="$emit('join-call')"
+          @click="joinAsHost"
           class="btn-primary flex-1"
         >
           Join Call Now
@@ -66,7 +66,16 @@ const copied = ref(false);
 
 const callLink = computed(() => {
   if (typeof window !== 'undefined') {
+    // Guest links don't include host parameter
     return `${window.location.origin}/call/${props.callId}`;
+  }
+  return '';
+});
+
+const hostCallLink = computed(() => {
+  if (typeof window !== 'undefined') {
+    // Host link includes host=true parameter
+    return `${window.location.origin}/call/${props.callId}?host=true`;
   }
   return '';
 });
@@ -85,6 +94,13 @@ const copyLink = async () => {
     if (linkInput.value) {
       linkInput.value.select();
     }
+  }
+};
+
+const joinAsHost = () => {
+  // Navigate directly to the call with host=true
+  if (typeof window !== 'undefined') {
+    window.location.href = hostCallLink.value;
   }
 };
 </script>

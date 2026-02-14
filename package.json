@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "A video calling web application that records family stories and organizes them into digital storybooks",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
@@ -11,7 +12,7 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@auth0/auth0-vue": "^2.5.0",
+    "@daily-co/daily-js": "^0.87.0",
     "@google/generative-ai": "^0.21.0",
     "@pinia/nuxt": "^0.9.0",
     "firebase": "^11.1.0",

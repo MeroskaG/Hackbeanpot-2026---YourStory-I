@@ -61,7 +61,7 @@ Family stories and cultural heritage are often lost across generations. This app
 - **Framework**: Nuxt 3 (Vue 3)
 - **Styling**: Tailwind CSS
 - **State Management**: Pinia
-- **Video/Audio**: WebRTC (MediaRecorder API)
+- **Video/Audio**: Daily.co (WebRTC platform)
 
 ### Backend
 - **Database**: Firebase Firestore
@@ -89,6 +89,7 @@ You'll also need accounts for:
 - [Firebase](https://firebase.google.com/) (Free plan is sufficient)
 - [Auth0](https://auth0.com/) (Free plan is sufficient)
 - [Google AI Studio](https://makersuite.google.com/app/apikey) (For Gemini API key)
+- [Daily.co](https://www.daily.co/) (Free plan - 10K participant minutes/month)
 
 ---
 
@@ -148,6 +149,9 @@ AUTH0_CALLBACK_URL=http://localhost:3000/callback
 # Gemini AI Configuration
 GEMINI_API_KEY=your_gemini_api_key_here
 
+# Daily.co Configuration
+DAILY_API_KEY=your_daily_api_key_here
+
 # Solana Configuration (OPTIONAL)
 SOLANA_NETWORK=devnet
 SOLANA_RPC_URL=https://api.devnet.solana.com
@@ -189,6 +193,18 @@ SOLANA_WALLET_SECRET_KEY=[your,wallet,secret,key,array]
 2. Click "Get API Key"
 3. Create a new API key
 4. Copy the key to your `.env` file
+
+### Step 5: Daily.co Setup
+
+1. Go to [Daily.co](https://www.daily.co/) and sign up
+2. Navigate to [Developers Dashboard](https://dashboard.daily.co/developers)
+3. Go to **API Keys** section
+4. Copy your API key
+5. Add to your `.env` file
+
+**Note**: The free tier includes 10,000 participant minutes per month, which is perfect for the MVP.
+
+For detailed Daily.co integration information, see [DAILY_INTEGRATION.md](DAILY_INTEGRATION.md).
 
 ---
 
@@ -394,19 +410,23 @@ Update Auth0 callback URLs to include your production domain.
 
 This is an MVP built for a hackathon. Known limitations include:
 
-1. **WebRTC**: Simplified implementation - only shows local video
-   - **Full implementation would require**: Signaling server, peer connections
+1. **Video Calling**: Uses Daily.co free tier
+   - Limited to 10K participant minutes/month
+   - **Production would need**: Paid Daily.co plan for scale
    
 2. **AI Transcription**: Uses placeholder transcript
    - **Full implementation would require**: OpenAI Whisper API or similar
 
-3. **Solana NFTs**: Placeholder implementation
+3. **Recording Processing**: Basic recording workflow
+   - **Full implementation would need**: Automatic download from Daily.co cloud
+
+4. **Solana NFTs**: Placeholder implementation
    - **Full implementation would require**: Metaplex SDK, IPFS storage
 
-4. **Mobile Support**: Not optimized for mobile devices
+5. **Mobile Support**: Not optimized for mobile devices
    - Desktop/laptop only for MVP
 
-5. **Error Handling**: Basic error handling
+6. **Error Handling**: Basic error handling
    - Production app would need more robust error recovery
 
 ---

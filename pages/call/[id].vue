@@ -1,22 +1,22 @@
 <template>
   <div class="h-screen bg-gray-900">
     <!-- Show different views based on user type -->
-    <GuestCallView 
+    <CallGuestCallView 
       v-if="!isHost && hasJoined"
       :callId="callId"
-      :localStream="localStream"
+      :roomUrl="roomUrl"
       @leave="handleLeave"
     />
     
-    <HostCallView 
+    <CallHostCallView 
       v-else-if="isHost && hasJoined"
       :callId="callId"
-      :localStream="localStream"
+      :roomUrl="roomUrl"
       @leave="handleEndCall"
     />
     
     <!-- Pre-Join Screen -->
-    <PreJoinScreen 
+    <CallPreJoinScreen 
       v-else
       :isHost="isHost"
       @join="handleJoin"
@@ -25,23 +25,41 @@
 </template>
 
 <script setup>
-// Video Call Page - Main call interface
+// Video Call Page - Main call interface using Daily.co
 // Different views for guests (simple) vs hosts (full featured)
 const route = useRoute();
 const router = useRouter();
-const { isAuthenticated } = useAuth0();
-const { getUserMedia, stopAllTracks } = useWebRTC();
+const { getCall } = useFirebase();
 
 const callId = computed(() => route.params.id);
-const isHost = computed(() => isAuthenticated.value);
+// Check if user is host by looking at URL parameter or session storage
+const isHost = computed(() => {
+  return route.query.host === 'true' || sessionStorage.getItem('isHost') === 'true';
+});
 const hasJoined = ref(false);
-const localStream = ref(null);
+const roomUrl = ref('');
+
+// Load call data to get room URL
+onMounted(async () => {
+  try {
+    const call = await getCall(callId.value);
+    if (call && call.roomUrl) {
+      roomUrl.value = call.roomUrl;
+    } else {
+      console.error('Call not found or no room URL');
+      alert('Invalid call link');
+      router.push('/');
+    }
+  } catch (error) {
+    console.error('Error loading call:', error);
+    alert('Failed to load call');
+    router.push('/');
+  }
+});
 
 // Handle join call
 const handleJoin = async (displayName) => {
   try {
-    // Get user media
-    localStream.value = await getUserMedia();
     hasJoined.value = true;
     
     // Store display name if guest
@@ -50,24 +68,18 @@ const handleJoin = async (displayName) => {
     }
   } catch (error) {
     console.error('Error joining call:', error);
-    alert('Failed to access camera/microphone. Please check permissions.');
+    alert('Failed to join call. Please try again.');
+    hasJoined.value = false;
   }
 };
 
 // Handle leave (guest)
 const handleLeave = () => {
-  stopAllTracks();
   router.push('/');
 };
 
 // Handle end call (host)
 const handleEndCall = async () => {
-  stopAllTracks();
   router.push('/collections');
 };
-
-// Cleanup on unmount
-onBeforeUnmount(() => {
-  stopAllTracks();
-});
 </script>
