@@ -20,7 +20,8 @@ export default defineEventHandler(async (event) => {
       },
       body: JSON.stringify({
         properties: {
-          enable_recording: 'cloud',
+          // Recording is handled locally in the browser, not by Daily.co
+          enable_recording: 'local',
           enable_chat: false,
           enable_knocking: false,
           start_video_off: false,

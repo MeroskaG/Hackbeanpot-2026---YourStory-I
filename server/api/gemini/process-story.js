@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export default defineEventHandler(async (event) => {
 
-  const { storyId, speakerName, transcript } = await readBody(event)
+  const { storyId, speakerName, transcript, videoUrl } = await readBody(event)
 
   if (!storyId || !speakerName) {
     throw createError({
@@ -11,6 +11,10 @@ export default defineEventHandler(async (event) => {
       message: 'Missing required fields: storyId and speakerName'
     })
   }
+
+  // videoUrl is available here for ElevenLabs API integration
+  // Example: await fetch('https://api.elevenlabs.io/...', { body: { video_url: videoUrl } })
+  console.log('Processing story with video URL:', videoUrl)
 
   const apiKey = process.env.GEMINI_API_KEY
 

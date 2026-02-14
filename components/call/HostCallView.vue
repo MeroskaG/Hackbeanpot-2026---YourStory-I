@@ -38,7 +38,7 @@
 
 <script setup>
 // Host Call View - Full-featured interface for managing recording
-// Uses Daily.co for video calling and recording
+// Uses Daily.co for video calling and Daily.co's local recording API
 const props = defineProps({
   callId: {
     type: String,
@@ -107,31 +107,31 @@ onMounted(async () => {
   }
 });
 
-// Start local browser recording
+// Start Daily.co local recording
 const startLocalRecording = async () => {
   try {
     // Wait a moment for Daily to fully connect
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const stream = getRecordingStream();
-    if (stream) {
-      await startRecording(stream);
-      console.log('Local recording started');
+    const callObject = getCallObject();
+    if (callObject) {
+      await startRecording(callObject);
+      console.log('Daily.co local recording started');
     } else {
-      console.warn('No recording stream available');
+      console.warn('Call object not available');
     }
   } catch (error) {
-    console.error('Error starting local recording:', error);
+    console.error('Error starting Daily.co recording:', error);
   }
 };
 
-// Stop local browser recording
+// Stop Daily.co local recording
 const stopLocalRecording = async () => {
   try {
     const recordingBlob = await stopRecording();
     return recordingBlob;
   } catch (error) {
-    console.error('Error stopping recording:', error);
+    console.error('Error stopping Daily.co recording:', error);
     return null;
   }
 };
@@ -192,10 +192,15 @@ const handleEndCall = async () => {
     const storyId = await createStory(storyData);
     console.log('Story created:', storyId);
     
-    // Optionally: Process with Gemini AI in the background
+    // Process with Gemini AI and prepare for ElevenLabs
     // This can be moved to a separate background task
     try {
-      await processStory(storyId, videoUrl);
+      await processStory({
+        storyId,
+        videoUrl,  // This URL can be used by ElevenLabs API
+        speakerName: storyData.speakerName,
+        transcript: '' // Add transcript if available
+      });
     } catch (aiError) {
       console.warn('AI processing failed, but recording saved:', aiError);
     }

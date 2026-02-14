@@ -1,60 +1,97 @@
-// Composable for recording video/audio during calls (host only)
+// Composable for recording video/audio during calls using Daily.co's local recording
 // Shared state across all instances (singleton pattern)
-const mediaRecorder = ref(null);
-const recordedChunks = ref([]);
 const isRecording = ref(false);
 const currentSpeaker = ref('');
 const speakerSegments = ref([]);
 const recordingStartTime = ref(null);
+const recordingBlob = ref(null);
+const recordingId = ref(null);
+let callObjectRef = null;
 
 export const useRecording = () => {
 
-  // Start recording
-  const startRecording = async (stream) => {
+  // Start Daily.co local recording
+  const startRecording = async (callObject) => {
     try {
-      const options = {
-        mimeType: 'video/webm;codecs=vp9,opus'
-      };
-
-      // Fallback to vp8 if vp9 is not supported
-      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options.mimeType = 'video/webm;codecs=vp8,opus';
+      if (!callObject) {
+        throw new Error('Call object not available');
       }
 
-      mediaRecorder.value = new MediaRecorder(stream, options);
-      recordedChunks.value = [];
+      callObjectRef = callObject;
       
-      mediaRecorder.value.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          recordedChunks.value.push(event.data);
-        }
-      };
+      // Set up recording event listeners
+      callObject.on('recording-started', handleRecordingStarted);
+      callObject.on('recording-stopped', handleRecordingStopped);
+      callObject.on('recording-data', handleRecordingData);
+      callObject.on('recording-error', handleRecordingError);
 
-      mediaRecorder.value.start(1000); // Collect data every second
+      // Start Daily.co local recording
+      await callObject.startRecording({
+        mode: 'local',
+        layout: {
+          preset: 'default'
+        }
+      });
+      
       isRecording.value = true;
       recordingStartTime.value = Date.now();
       
-      console.log('Recording started');
+      console.log('Daily.co local recording started');
     } catch (error) {
-      console.error('Error starting recording:', error);
+      console.error('Error starting Daily.co recording:', error);
       throw error;
     }
   };
 
-  // Stop recording
+  // Handle recording started event
+  const handleRecordingStarted = (event) => {
+    console.log('Recording started event:', event);
+    recordingId.value = event.recordingId;
+  };
+
+  // Handle recording stopped event
+  const handleRecordingStopped = (event) => {
+    console.log('Recording stopped event:', event);
+    isRecording.value = false;
+  };
+
+  // Handle recording data (chunks)
+  const handleRecordingData = (event) => {
+    console.log('Recording data received:', event);
+    // Store the recording blob when available
+    if (event.data) {
+      recordingBlob.value = event.data;
+    }
+  };
+
+  // Handle recording errors
+  const handleRecordingError = (event) => {
+    console.error('Recording error:', event);
+    isRecording.value = false;
+  };
+
+  // Stop Daily.co recording
   const stopRecording = () => {
-    return new Promise((resolve) => {
-      if (mediaRecorder.value && isRecording.value) {
-        mediaRecorder.value.onstop = () => {
-          const blob = new Blob(recordedChunks.value, {
-            type: 'video/webm'
-          });
-          isRecording.value = false;
-          resolve(blob);
-        };
-        
-        mediaRecorder.value.stop();
-      } else {
+    return new Promise(async (resolve) => {
+      try {
+        if (callObjectRef && isRecording.value) {
+          await callObjectRef.stopRecording();
+          
+          // Wait briefly for recording data to be available
+          await new Promise(r => setTimeout(r, 1000));
+          
+          // Clean up event listeners
+          callObjectRef.off('recording-started', handleRecordingStarted);
+          callObjectRef.off('recording-stopped', handleRecordingStopped);
+          callObjectRef.off('recording-data', handleRecordingData);
+          callObjectRef.off('recording-error', handleRecordingError);
+          
+          resolve(recordingBlob.value);
+        } else {
+          resolve(null);
+        }
+      } catch (error) {
+        console.error('Error stopping recording:', error);
         resolve(null);
       }
     });
@@ -86,20 +123,18 @@ export const useRecording = () => {
 
   // Get recording blob
   const getRecordingBlob = () => {
-    if (recordedChunks.value.length > 0) {
-      return new Blob(recordedChunks.value, { type: 'video/webm' });
-    }
-    return null;
+    return recordingBlob.value;
   };
 
   // Reset recording state
   const reset = () => {
-    mediaRecorder.value = null;
-    recordedChunks.value = [];
+    recordingBlob.value = null;
+    recordingId.value = null;
     isRecording.value = false;
     currentSpeaker.value = '';
     speakerSegments.value = [];
     recordingStartTime.value = null;
+    callObjectRef = null;
   };
 
   return {
