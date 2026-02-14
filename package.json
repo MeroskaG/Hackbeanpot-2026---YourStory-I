@@ -11,14 +11,14 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@auth0/auth0-vue": "^2.3.3",
+    "@auth0/auth0-vue": "^2.5.0",
     "@google/generative-ai": "^0.21.0",
+    "@pinia/nuxt": "^0.9.0",
     "firebase": "^11.1.0",
-    "vue": "^3.5.13",
     "nuxt": "^3.14.159",
     "pinia": "^2.2.8",
-    "@pinia/nuxt": "^0.9.0",
-    "simple-peer": "^9.11.1"
+    "simple-peer": "^9.11.1",
+    "vue": "^3.5.13"
   },
   "devDependencies": {
     "@nuxtjs/tailwindcss": "^6.12.2",

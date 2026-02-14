@@ -4,8 +4,6 @@ export default defineNuxtRouteMiddleware((to, from) => {
   // Only run on client side
   if (process.server) return;
   
-  const { isAuthenticated, isLoading } = useAuth0();
-  
   // Allow access to call pages (guests can join)
   if (to.path.startsWith('/call/')) {
     return;
@@ -16,8 +14,22 @@ export default defineNuxtRouteMiddleware((to, from) => {
     return;
   }
   
-  // Protect other routes - redirect to sign in if not authenticated
-  if (!isLoading.value && !isAuthenticated.value) {
+  // Allow access to home page
+  if (to.path === '/') {
+    return;
+  }
+  
+  // For protected routes, check authentication
+  try {
+    const { isAuthenticated, isLoading } = useAuth0();
+    
+    // Wait until loading is complete before checking auth
+    if (!isLoading.value && !isAuthenticated.value) {
+      return navigateTo('/');
+    }
+  } catch (error) {
+    // If Auth0 isn't ready, redirect to home
+    console.error('Auth0 not initialized:', error);
     return navigateTo('/');
   }
 });
