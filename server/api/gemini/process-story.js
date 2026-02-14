@@ -1,101 +1,67 @@
-// API endpoint for processing stories with Google Gemini AI
-// Handles transcription, summarization, title generation, and tag extraction
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// server/api/gemini/process-story.js
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export default defineEventHandler(async (event) => {
-  const { storyId, audioUrl, speakerName } = await readBody(event);
-  
-  if (!storyId || !audioUrl || !speakerName) {
+
+  const { storyId, speakerName, transcript } = await readBody(event)
+
+  if (!storyId || !speakerName) {
     throw createError({
       statusCode: 400,
-      message: 'Missing required fields: storyId, audioUrl, speakerName'
-    });
+      message: 'Missing required fields: storyId and speakerName'
+    })
   }
 
+  const apiKey = process.env.GEMINI_API_KEY
+
+  if (!apiKey) {
+    throw createError({
+      statusCode: 500,
+      message: 'Missing GEMINI_API_KEY in .env file'
+    })
+  }
+
+  const genAI = new GoogleGenerativeAI(apiKey)
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+
+  const storyText = transcript || `This is a placeholder story told by ${speakerName}. In production this would be the real transcript from the audio recording.`
+
   try {
-    const config = useRuntimeConfig();
-    const apiKey = config.geminiApiKey;
-    
-    if (!apiKey) {
-      throw new Error('Gemini API key not configured');
-    }
+    const [titleResult, summaryResult, tagsResult] = await Promise.all([
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-    
-    // For MVP, using placeholder transcript
-    // In production, you would:
-    // 1. Download audio from audioUrl
-    // 2. Use Whisper API or similar for transcription
-    // 3. Pass transcript to Gemini for processing
-    
-    const placeholderTranscript = `This is a placeholder transcript for the story by ${speakerName}. 
-    
-In a full implementation, this would be the actual transcription of the audio/video recording using a service like OpenAI's Whisper API or Google's Speech-to-Text API.
+      model.generateContent(`Create a short title (5-8 words) for this family story. Return ONLY the title, nothing else. Story by ${speakerName}: ${storyText.substring(0, 500)}`),
 
-The transcript would capture the actual words spoken during the recording, with timestamps and speaker identification.`;
+      model.generateContent(`You are preserving a family story. Write a warm 1 paragraph summary in third (e.g. "she remembers.."). If the story seems  incomplete, write a beautiful placeholder summary about ${speakerName} sharing family memories. Story: ${storyText}`),
 
-    // Generate everything in parallel for speed
-    const [summaryResult, titleResult, tagsResult] = await Promise.all([
-      // Generate summary
-      model.generateContent(`
-        Summarize this family story in 2-3 paragraphs.
-        Focus on key events and emotional moments.
-        Keep it warm and personal.
-        
-        Story by ${speakerName}:
-        ${placeholderTranscript}
-      `),
-      
-      // Generate title
-      model.generateContent(`
-        Create a 5-8 word title for this family story.
-        Make it descriptive and emotional.
-        Return only the title, nothing else.
-        
-        ${placeholderTranscript.substring(0, 500)}
-      `),
-      
-      // Extract tags
-      model.generateContent(`
-        Extract 3-5 thematic tags for this story.
-        Use themes like: Immigration, Childhood, War, Marriage, Career, Family, Celebration, Loss, etc.
-        Return only comma-separated tags, nothing else.
-        
-        ${placeholderTranscript.substring(0, 1000)}
-      `)
-    ]);
-    
-    // Extract results
-    const summary = summaryResult.response.text();
-    const title = titleResult.response.text().trim().replace(/['"]/g, '');
+      model.generateContent(`Extract 3-5 thematic tags from this family story. Choose from: Childhood, Immigration, War, Love, Family, Food, Work, Faith, Travel, Loss, Achievement, Culture, Humor, Home. Return ONLY comma-separated tags, nothing else. Story: ${storyText.substring(0, 1000)}`)
+
+    ])
+
+    const title = titleResult.response.text().trim().replace(/['"]/g, '')
+    const summary = summaryResult.response.text().trim().replace(/\\n/g, ' ').replace(/\n/g, ' ')
     const tags = tagsResult.response.text()
       .split(',')
       .map(t => t.trim())
-      .filter(t => t.length > 0);
-    
-    // Return processed data
-    // In production, this would update the story in Firebase
+      .filter(t => t.length > 0)
+
     return {
       success: true,
       storyId,
       data: {
-        transcript: placeholderTranscript,
-        summary,
         title,
+        summary,
         tags,
+        transcript: storyText,
         aiProcessed: true,
         processingStatus: 'complete'
       }
-    };
-    
+    }
+
   } catch (error) {
-    console.error('AI processing failed:', error);
-    
-    return {
-      success: false,
-      error: error.message,
-      storyId
-    };
+    console.error('Gemini AI error:', error.message)
+    throw createError({
+      statusCode: 500,
+      message: `AI processing failed: ${error.message}`
+    })
   }
-});
+})
