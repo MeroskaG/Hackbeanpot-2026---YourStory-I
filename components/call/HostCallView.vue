@@ -106,9 +106,10 @@ const handleEndCall = async () => {
     
     if (recordingBlob) {
       // Upload to Firebase Storage
-      const timestamp = Date.now();
-      const filename = `recordings/${props.callId}/${timestamp}.webm`;
-      const videoUrl = await uploadFile(recordingBlob, filename);
+  const timestamp = Date.now();
+  const uid = sessionStorage.getItem('uid') || 'anonymous';
+  const filename = `recordings/${uid}/${props.callId}/${timestamp}.webm`;
+  const videoUrl = await uploadFile(recordingBlob, filename);
       
       // Create story for the current speaker
       if (currentSpeaker.value) {

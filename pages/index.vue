@@ -48,8 +48,45 @@ watch(isAuthenticated, (authenticated) => {
 const handleLogin = () => {
   login();
 };
-</script>
 
+// Load external scripts on client in order (keeps SFC to a single <script> block)
+if (typeof window !== 'undefined') {
+  const scripts = [
+    'https://www.gstatic.com/firebasejs/5.3.0/firebase-app.js',
+    'https://www.gstatic.com/firebasejs/5.3.0/firebase-auth.js',
+    'https://www.gstatic.com/firebasejs/5.3.0/firebase-firestore.js',
+    'https://cdn.auth0.com/js/auth0/9.7.3/auth0.min.js',
+    '/app/auth0.js',
+    '/app/firebase.js',
+    '/app/index.js'
+  ];
+
+  const loadScript = (src) => new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const s = document.createElement('script');
+    s.src = src;
+    // preserve execution order for legacy globals
+    s.async = false;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(s);
+  });
+
+  onMounted(async () => {
+    for (const src of scripts) {
+      try {
+        // await to preserve order
+        // eslint-disable-next-line no-await-in-loop
+        await loadScript(src);
+      } catch (err) {
+        // non-fatal: log and continue
+        // eslint-disable-next-line no-console
+        console.error(err);
+      }
+    }
+  });
+}
+</script>
 <style scoped>
 /* Additional styles if needed */
 </style>

@@ -56,3 +56,4 @@ export default defineNuxtConfig({
   // Disable SSR for WebRTC compatibility
   ssr: false
 })
+
