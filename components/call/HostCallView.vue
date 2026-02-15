@@ -248,9 +248,15 @@ const handleEndCall = async () => {
     // Upload recording to Firebase Storage
     const filename = `recordings/${props.callId}_${timestamp}.webm`;
     
+    console.log('Starting upload...', {
+      blobSize: recordingBlob.size,
+      blobType: recordingBlob.type,
+      filename
+    });
+    
     try {
       const videoUrl = await uploadFile(recordingBlob, filename);
-      console.log('Recording uploaded to cloud:', videoUrl);
+      console.log('Recording uploaded to cloud successfully:', videoUrl);
       
       // Create story with the recording
       const storyData = {
@@ -285,7 +291,12 @@ const handleEndCall = async () => {
       alert('Recording saved locally and uploaded to cloud successfully!');
     } catch (uploadError) {
       console.error('Cloud upload failed:', uploadError);
-      alert('Recording saved locally, but cloud upload failed. You can find the recording in your Downloads folder.');
+      console.error('Upload error details:', {
+        message: uploadError.message,
+        code: uploadError.code,
+        stack: uploadError.stack
+      });
+      alert(`Recording saved locally, but cloud upload failed: ${uploadError.message}. You can find the recording in your Downloads folder.`);
     }
     
     // Leave the Daily room
