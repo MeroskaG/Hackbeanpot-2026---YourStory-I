@@ -24,7 +24,7 @@ A video calling web application that records family stories and uses AI to organ
 
 ## 🎯 Overview
 
-**Family Stories** is a desktop-first web application designed to help families preserve precious memories through video calls. The app records conversations, uses AI to transcribe and summarize stories, and organizes them by speaker for easy access.
+**Your Story AI (And I)** is a desktop-first web application designed to help families preserve precious memories through video calls. The app records conversations, uses AI to transcribe and summarize stories, and organizes them by speaker for easy access.
 
 ### The Problem We're Solving
 
