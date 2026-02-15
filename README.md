@@ -1,4 +1,4 @@
-# Family Stories - Video Call & Story Preservation Web Application
+# Your Stories AI (And I) - Video Call & Story Preservation Web Application
 
 > 🏆 Built for HackBeanpot 2026
 
