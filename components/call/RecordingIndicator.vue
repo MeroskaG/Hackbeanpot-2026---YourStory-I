@@ -1,8 +1,28 @@
 <template>
-  <div v-if="isRecording" class="absolute top-4 left-4 z-10">
-    <div class="bg-red-600 px-4 py-2 rounded-lg flex items-center space-x-2 shadow-lg">
-      <div class="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-      <span class="text-white font-semibold">Recording</span>
+  <div 
+    v-if="isRecording" 
+    v-motion
+    :initial="{ y: -20, opacity: 0 }"
+    :enter="{ y: 0, opacity: 1, transition: { duration: 500 } }"
+    class="absolute top-4 left-4 z-10"
+  >
+    <div class="bg-red-600/90 backdrop-blur-md border border-red-500/30 px-5 py-3 rounded-full flex items-center space-x-3 shadow-2xl">
+      <div 
+        v-motion
+        :initial="{ scale: 1 }"
+        :enter="{
+          scale: [1, 1.2, 1],
+          transition: {
+            duration: 2000,
+            repeat: Infinity
+          }
+        } as any"
+        class="w-3 h-3 bg-white rounded-full"
+      ></div>
+      <span class="text-white font-semibold flex items-center gap-2">
+        <Icon name="lucide:circle-dot" size="18" />
+        Recording
+      </span>
     </div>
   </div>
 </template>
@@ -16,18 +36,3 @@ const props = defineProps({
   }
 });
 </script>
-
-<style scoped>
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
-  }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-</style>
