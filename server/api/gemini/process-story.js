@@ -1,8 +1,8 @@
 // server/api/gemini/process-story.js
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { getDb } from '~/utils/firebase-admin'
 
 export default defineEventHandler(async (event) => {
-  // Accept both audioUrl (your code) and videoUrl (teammate's code)
   const { storyId, speakerName, audioUrl, videoUrl } = await readBody(event)
 
   if (!storyId || !speakerName) {
@@ -22,10 +22,23 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Use audioUrl or videoUrl — whichever is provided
   const mediaUrl = audioUrl || videoUrl || null
   console.log('Processing story with media URL:', mediaUrl)
 
+  // ── Save "processing" status to Firebase right away ────
+  // Frontend can show a spinner while this runs
+  const db = getDb()
+  const storyRef = db.collection('stories').doc(storyId)
+  await storyRef.set({
+    storyId,
+    speakerName,
+    audioUrl: mediaUrl,
+    processingStatus: 'processing',
+    aiProcessed: false,
+    createdAt: new Date()
+  }, { merge: true })
+
+  // ── Step 1: Transcribe with ElevenLabs ─────────────────
   let transcript = ''
 
   if (mediaUrl && elevenLabsKey) {
@@ -62,6 +75,7 @@ export default defineEventHandler(async (event) => {
     transcript = `This is a story shared by ${speakerName} during a family video call.`
   }
 
+  // ── Step 2: Gemini AI ───────────────────────────────────
   const genAI = new GoogleGenerativeAI(geminiKey)
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
@@ -83,6 +97,22 @@ export default defineEventHandler(async (event) => {
 
     console.log(`Done! Title: ${title}`)
 
+    // ── Step 3: Save results to Firebase ───────────────────
+    await storyRef.set({
+      storyId,
+      speakerName,
+      title,
+      summary,
+      transcript,
+      tags,
+      audioUrl: mediaUrl,
+      aiProcessed: true,
+      processingStatus: 'complete',
+      completedAt: new Date()
+    }, { merge: true })
+
+    console.log(`Story saved to Firebase! storyId: ${storyId}`)
+
     return {
       success: true,
       storyId,
@@ -99,6 +129,13 @@ export default defineEventHandler(async (event) => {
 
   } catch (error) {
     console.error('Gemini AI error:', error.message)
+
+    // Save failed status to Firebase
+    await storyRef.set({
+      processingStatus: 'failed',
+      processingError: error.message
+    }, { merge: true })
+
     throw createError({
       statusCode: 500,
       message: `AI processing failed: ${error.message}`
