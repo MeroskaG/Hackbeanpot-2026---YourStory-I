@@ -70,7 +70,8 @@ const {
   startRecording, 
   stopRecording, 
   isRecording,
-  speakerSegments 
+  speakerSegments,
+  downloadRecording
 } = useRecording();
 
 const { createStory, uploadFile, endCall, updateCall } = useFirebase();
@@ -107,7 +108,7 @@ onMounted(async () => {
   }
 });
 
-// Start Daily.co local recording
+// Start MediaRecorder-based local recording
 const startLocalRecording = async () => {
   try {
     // Wait a moment for Daily to fully connect
@@ -116,22 +117,22 @@ const startLocalRecording = async () => {
     const callObject = getCallObject();
     if (callObject) {
       await startRecording(callObject);
-      console.log('Daily.co local recording started');
+      console.log('MediaRecorder local recording started');
     } else {
       console.warn('Call object not available');
     }
   } catch (error) {
-    console.error('Error starting Daily.co recording:', error);
+    console.error('Error starting MediaRecorder recording:', error);
   }
 };
 
-// Stop Daily.co local recording
+// Stop MediaRecorder local recording
 const stopLocalRecording = async () => {
   try {
     const recordingBlob = await stopRecording();
     return recordingBlob;
   } catch (error) {
-    console.error('Error stopping Daily.co recording:', error);
+    console.error('Error stopping MediaRecorder recording:', error);
     return null;
   }
 };
@@ -168,51 +169,67 @@ const handleEndCall = async () => {
       return;
     }
     
-    // Show processing message
-    alert('Processing recording... This may take a moment.');
+    console.log('Recording captured, size:', recordingBlob.size, 'bytes');
     
-    // Upload recording to Firebase Storage
+    // Download recording locally to user's computer
     const timestamp = Date.now();
-    const filename = `recordings/${props.callId}_${timestamp}.webm`;
-    const videoUrl = await uploadFile(recordingBlob, filename);
+    const localFilename = `call_${props.callId}_${timestamp}.webm`;
+    const downloaded = downloadRecording(localFilename);
     
-    console.log('Recording uploaded:', videoUrl);
-    
-    // Create story with the recording
-    const storyData = {
-      callId: props.callId,
-      videoUrl,
-      speakerName: currentSpeaker.value || participantNames.value[0] || 'Guest',
-      speakerSegments: speakerSegments.value,
-      duration: recordingBlob.size,
-      createdAt: new Date(),
-      processed: false
-    };
-    
-    const storyId = await createStory(storyData);
-    console.log('Story created:', storyId);
-    
-    // Process with Gemini AI and prepare for ElevenLabs
-    // This can be moved to a separate background task
-    try {
-      await processStory({
-        storyId,
-        videoUrl,  // This URL can be used by ElevenLabs API
-        speakerName: storyData.speakerName,
-        transcript: '' // Add transcript if available
-      });
-    } catch (aiError) {
-      console.warn('AI processing failed, but recording saved:', aiError);
+    if (downloaded) {
+      console.log('Recording downloaded to local computer');
     }
     
-    // Mark call as ended
-    await endCall(props.callId);
+    // Show processing message
+    alert('Recording saved locally! Now uploading to cloud...');
+    
+    // Upload recording to Firebase Storage
+    const filename = `recordings/${props.callId}_${timestamp}.webm`;
+    
+    try {
+      const videoUrl = await uploadFile(recordingBlob, filename);
+      console.log('Recording uploaded to cloud:', videoUrl);
+      
+      // Create story with the recording
+      const storyData = {
+        callId: props.callId,
+        videoUrl,
+        speakerName: currentSpeaker.value || participantNames.value[0] || 'Guest',
+        speakerSegments: speakerSegments.value,
+        duration: recordingBlob.size,
+        createdAt: new Date(),
+        processed: false
+      };
+      
+      const storyId = await createStory(storyData);
+      console.log('Story created:', storyId);
+      
+      // Process with Gemini AI and prepare for ElevenLabs
+      // This can be moved to a separate background task
+      try {
+        await processStory({
+          storyId,
+          videoUrl,  // This URL can be used by ElevenLabs API
+          speakerName: storyData.speakerName,
+          transcript: '' // Add transcript if available
+        });
+      } catch (aiError) {
+        console.warn('AI processing failed, but recording saved:', aiError);
+      }
+      
+      // Mark call as ended
+      await endCall(props.callId);
+      
+      alert('Recording saved locally and uploaded to cloud successfully!');
+    } catch (uploadError) {
+      console.error('Cloud upload failed:', uploadError);
+      alert('Recording saved locally, but cloud upload failed. You can find the recording in your Downloads folder.');
+    }
     
     // Leave the Daily room
     await leaveCall();
     
     // Navigate to the story or collections
-    alert('Recording saved successfully!');
     emit('leave');
   } catch (error) {
     console.error('Error ending call:', error);
