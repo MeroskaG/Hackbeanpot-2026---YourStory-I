@@ -1,5 +1,10 @@
 <template>
-  <div class="relative bg-gray-800 rounded-lg overflow-hidden aspect-video">
+  <div 
+    v-motion
+    :initial="{ scale: 0.95, opacity: 0 }"
+    :enter="{ scale: 1, opacity: 1, transition: { duration: 400 } }"
+    class="relative bg-black/30 backdrop-blur-sm rounded-2xl overflow-hidden aspect-video border border-white/20 shadow-2xl"
+  >
     <video
       ref="videoElement"
       autoplay
@@ -9,32 +14,55 @@
     ></video>
 
     <!-- Name Label -->
-    <div class="absolute bottom-4 left-4 bg-black bg-opacity-60 px-3 py-1 rounded-lg">
-      <span class="text-white text-sm font-medium">
+    <div 
+      v-motion
+      :initial="{ y: 10, opacity: 0 }"
+      :enter="{ y: 0, opacity: 1, transition: { duration: 300, delay: 200 } }"
+      class="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full shadow-lg"
+    >
+      <span class="text-white text-sm font-semibold flex items-center gap-2">
+        <Icon name="lucide:user" size="14" />
         {{ participant.name }}{{ participant.isLocal ? ' (You)' : '' }}
       </span>
     </div>
 
     <!-- Audio/Video Status Indicators -->
     <div class="absolute top-4 right-4 flex space-x-2">
-      <div v-if="!participant.audioEnabled" class="bg-red-600 p-2 rounded-full">
-        <span class="text-white text-sm">🔇</span>
+      <div 
+        v-if="!participant.audioEnabled" 
+        v-motion
+        :initial="{ scale: 0 }"
+        :enter="{ scale: 1, transition: { type: 'spring', stiffness: 200 } }"
+        class="bg-red-500/90 backdrop-blur-sm border border-red-400/30 p-2 rounded-full shadow-lg"
+      >
+        <Icon name="lucide:mic-off" size="16" class="text-white" />
       </div>
-      <div v-if="!participant.videoEnabled" class="bg-red-600 p-2 rounded-full">
-        <span class="text-white text-sm">📹</span>
+      <div 
+        v-if="!participant.videoEnabled" 
+        v-motion
+        :initial="{ scale: 0 }"
+        :enter="{ scale: 1, transition: { type: 'spring', stiffness: 200 } }"
+        class="bg-red-500/90 backdrop-blur-sm border border-red-400/30 p-2 rounded-full shadow-lg"
+      >
+        <Icon name="lucide:video-off" size="16" class="text-white" />
       </div>
     </div>
 
     <!-- Placeholder when video is off -->
     <div 
       v-if="!participant.videoEnabled" 
-      class="absolute inset-0 flex items-center justify-center bg-gray-700"
+      class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-600/50 to-blue-600/50 backdrop-blur-sm"
     >
       <div class="text-center">
-        <div class="w-20 h-20 bg-gray-600 rounded-full flex items-center justify-center mx-auto mb-2">
-          <span class="text-3xl text-white">👤</span>
+        <div 
+          v-motion
+          :initial="{ scale: 0 }"
+          :enter="{ scale: 1, transition: { type: 'spring', stiffness: 150, delay: 100 } }"
+          class="w-20 h-20 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center mx-auto mb-3 shadow-xl"
+        >
+          <Icon name="lucide:user" size="40" class="text-white" />
         </div>
-        <span class="text-white text-sm">{{ participant.name }}</span>
+        <span class="text-white text-sm font-medium">{{ participant.name }}</span>
       </div>
     </div>
   </div>

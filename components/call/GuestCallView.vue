@@ -1,12 +1,43 @@
 <template>
-  <div class="h-screen bg-gray-900 flex flex-col">
+  <div class="relative h-screen flex flex-col" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <!-- Animated background elements -->
+    <div
+      v-motion
+      :initial="{ scale: 1, opacity: 0.2 }"
+      :enter="{
+        scale: [1, 1.2, 1],
+        opacity: [0.2, 0.3, 0.2],
+        transition: {
+          duration: 8000,
+          repeat: Infinity,
+          ease: 'easeInOut'
+        }
+      }"
+      class="absolute top-10 right-10 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none"
+    />
+    <div
+      v-motion
+      :initial="{ scale: 1, opacity: 0.2 }"
+      :enter="{
+        scale: [1, 1.3, 1],
+        opacity: [0.2, 0.3, 0.2],
+        transition: {
+          duration: 10000,
+          repeat: Infinity,
+          ease: 'easeInOut',
+          delay: 1000
+        }
+      }"
+      class="absolute bottom-10 left-10 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none"
+    />
+    
     <!-- Video Grid (takes most of the screen) -->
-    <div class="flex-1 p-4">
+    <div class="relative z-10 flex-1 p-4">
       <CallVideoGrid :isHost="false" />
     </div>
 
     <!-- Bottom Control Panel -->
-    <div class="bg-gray-800 border-t border-gray-700 p-4">
+    <div class="relative z-10 bg-black/20 backdrop-blur-md border-t border-white/20 p-4">
       <div class="max-w-4xl mx-auto flex items-center justify-center space-x-4">
         <CallMuteButton @toggle="toggleMute" :isMuted="!isMicEnabled" />
         <CallCameraButton @toggle="toggleCamera" :isCameraOff="!isCameraEnabled" />
