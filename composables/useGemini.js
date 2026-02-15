@@ -4,6 +4,7 @@ export const useGemini = () => {
   const processingError = ref(null);
   
   // Process story with AI (transcription, summary, title, tags)
+  // storyData should include: { storyId, videoUrl, speakerName, transcript }
   const processStory = async (storyData) => {
     isProcessing.value = true;
     processingError.value = null;
@@ -11,7 +12,7 @@ export const useGemini = () => {
     try {
       const result = await $fetch('/api/gemini/process-story', {
         method: 'POST',
-        body: storyData
+        body: storyData  // Includes videoUrl for ElevenLabs integration
       });
       
       return result;

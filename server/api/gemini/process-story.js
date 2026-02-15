@@ -2,7 +2,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export default defineEventHandler(async (event) => {
-  const { storyId, speakerName, audioUrl } = await readBody(event)
+  // Accept both audioUrl (your code) and videoUrl (teammate's code)
+  const { storyId, speakerName, audioUrl, videoUrl } = await readBody(event)
 
   if (!storyId || !speakerName) {
     throw createError({
@@ -21,14 +22,18 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // Use audioUrl or videoUrl — whichever is provided
+  const mediaUrl = audioUrl || videoUrl || null
+  console.log('Processing story with media URL:', mediaUrl)
+
   let transcript = ''
 
-  if (audioUrl && elevenLabsKey) {
+  if (mediaUrl && elevenLabsKey) {
     try {
       console.log('Sending mp4 to ElevenLabs...')
       const formData = new FormData()
       formData.append('model_id', 'scribe_v2')
-      formData.append('cloud_storage_url', audioUrl)
+      formData.append('cloud_storage_url', mediaUrl)
       formData.append('diarize', 'true')
       formData.append('tag_audio_events', 'true')
 
@@ -50,7 +55,7 @@ export default defineEventHandler(async (event) => {
       console.error('Transcription failed:', transcribeError.message)
     }
   } else {
-    console.log('No audioUrl — using placeholder')
+    console.log('No mediaUrl — using placeholder')
   }
 
   if (!transcript) {
@@ -86,7 +91,7 @@ export default defineEventHandler(async (event) => {
         summary,
         tags,
         transcript,
-        audioUrl: audioUrl || null,
+        audioUrl: mediaUrl,
         aiProcessed: true,
         processingStatus: 'complete'
       }
