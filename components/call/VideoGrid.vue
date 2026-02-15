@@ -18,6 +18,10 @@
 
 <script setup>
 // Video Grid - Displays all participant videos from Daily.co
+
+// Explicit import for VideoTile
+import CallVideoTile from '~/components/call/VideoTile.vue';
+
 const props = defineProps({
   isHost: {
     type: Boolean,
@@ -39,4 +43,9 @@ const gridClass = computed(() => {
   if (count <= 6) return 'grid-cols-3 grid-rows-2';
   return 'grid-cols-3 grid-rows-3';
 });
+
+// Debug logging
+watch(participants, (newVal) => {
+  console.log('VideoGrid: participants changed', newVal.length, newVal);
+}, { deep: true, immediate: true });
 </script>

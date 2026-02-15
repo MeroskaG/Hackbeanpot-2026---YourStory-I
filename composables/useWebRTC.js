@@ -18,7 +18,8 @@ export const useWebRTC = () => {
     if (!callObject) {
       callObject = DailyIframe.createCallObject({
         audioSource: true,
-        videoSource: true
+        videoSource: true,
+        subscribeToTracksAutomatically: true
       });
 
       // Set up event listeners
@@ -47,8 +48,14 @@ export const useWebRTC = () => {
     isConnected.value = true;
     isJoining.value = false;
     
-    // Update local participant
+    // Update local participant immediately
     updateParticipants();
+    
+    // Update again after a short delay to catch tracks that load slowly
+    setTimeout(() => {
+      console.log('Delayed participant update after join');
+      updateParticipants();
+    }, 1000);
   };
 
   // Handle left meeting
@@ -80,6 +87,9 @@ export const useWebRTC = () => {
   const handleTrackStarted = (event) => {
     console.log('Track started', event);
     updateParticipants();
+    
+    // Update again after delay to ensure track is fully ready
+    setTimeout(updateParticipants, 500);
   };
 
   // Handle errors
@@ -97,8 +107,31 @@ export const useWebRTC = () => {
     // Convert to array for Vue reactivity
     participants.value = Object.entries(dailyParticipants).map(([id, participant]) => {
       // Extract tracks properly from Daily participant object
-      const audioTrack = participant.tracks?.audio?.persistentTrack || participant.tracks?.audio?.track;
-      const videoTrack = participant.tracks?.video?.persistentTrack || participant.tracks?.video?.track;
+      // Try multiple ways to access tracks
+      let audioTrack = null;
+      let videoTrack = null;
+      
+      if (participant.tracks) {
+        audioTrack = participant.tracks.audio?.persistentTrack || 
+                     participant.tracks.audio?.track || 
+                     participant.tracks.audio?.state === 'playable' && participant.tracks.audio?.track;
+        
+        videoTrack = participant.tracks.video?.persistentTrack || 
+                     participant.tracks.video?.track ||
+                     participant.tracks.video?.state === 'playable' && participant.tracks.video?.track;
+      }
+      
+      console.log(`Participant ${participant.user_name || 'Guest'}:`, {
+        id,
+        isLocal: participant.local,
+        hasAudioTrack: !!audioTrack,
+        hasVideoTrack: !!videoTrack,
+        audioEnabled: participant.audio,
+        videoEnabled: participant.video,
+        audioState: participant.tracks?.audio?.state,
+        videoState: participant.tracks?.video?.state,
+        rawTracks: participant.tracks
+      });
       
       return {
         id,
@@ -111,7 +144,7 @@ export const useWebRTC = () => {
       };
     });
     
-    console.log('Updated participants:', participants.value.length, participants.value);
+    console.log('Updated participants:', participants.value.length);
   };
 
   // Join a Daily room
@@ -126,8 +159,14 @@ export const useWebRTC = () => {
 
       await callObject.join({
         url: roomUrl,
-        userName
+        userName,
+        startVideoOff: false,
+        startAudioOff: false
       });
+      
+      // Ensure local camera and mic are on
+      await callObject.setLocalAudio(true);
+      await callObject.setLocalVideo(true);
 
       return true;
     } catch (err) {

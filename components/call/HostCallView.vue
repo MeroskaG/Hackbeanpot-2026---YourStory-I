@@ -70,6 +70,16 @@
 <script setup>
 // Host Call View - Full-featured interface for managing recording
 // Uses Daily.co for video calling and Daily.co's local recording API
+
+// Explicit imports for call components
+import CallRecordingIndicator from '~/components/call/RecordingIndicator.vue';
+import CallVideoGrid from '~/components/call/VideoGrid.vue';
+import CallMuteButton from '~/components/call/MuteButton.vue';
+import CallCameraButton from '~/components/call/CameraButton.vue';
+import CallSpeakerSelector from '~/components/call/SpeakerSelector.vue';
+import CallCopyLinkButton from '~/components/call/CopyLinkButton.vue';
+import CallEndCallButton from '~/components/call/EndCallButton.vue';
+
 const props = defineProps({
   callId: {
     type: String,

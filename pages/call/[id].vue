@@ -27,6 +27,10 @@
 <script setup>
 // Video Call Page - Main call interface using Daily.co
 // Different views for guests (simple) vs hosts (full featured)
+import CallGuestCallView from '~/components/call/GuestCallView.vue';
+import CallHostCallView from '~/components/call/HostCallView.vue';
+import CallPreJoinScreen from '~/components/call/PreJoinScreen.vue';
+
 const route = useRoute();
 const router = useRouter();
 const { getCall } = useFirebase();

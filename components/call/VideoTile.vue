@@ -88,11 +88,23 @@ const props = defineProps({
 const videoElement = ref(null);
 
 // Update video track when it changes
-watch(() => props.participant.videoTrack, (newTrack) => {
+watch(() => props.participant.videoTrack, (newTrack, oldTrack) => {
+  console.log(`Video track changed for ${props.participant.name}:`, {
+    hasNew: !!newTrack,
+    hasOld: !!oldTrack,
+    hasElement: !!videoElement.value,
+    trackId: newTrack?.id
+  });
+  
   if (videoElement.value && newTrack) {
     console.log('Setting video track for', props.participant.name, newTrack);
     const stream = new MediaStream([newTrack]);
     videoElement.value.srcObject = stream;
+    
+    // Force play (sometimes needed)
+    videoElement.value.play().catch(err => {
+      console.log('Autoplay prevented for video:', err);
+    });
   } else if (videoElement.value && !newTrack) {
     videoElement.value.srcObject = null;
   }
@@ -119,7 +131,8 @@ onMounted(() => {
   console.log('VideoTile mounted for', props.participant.name, {
     hasVideo: !!props.participant.videoTrack,
     hasAudio: !!props.participant.audioTrack,
-    videoEnabled: props.participant.videoEnabled
+    videoEnabled: props.participant.videoEnabled,
+    isLocal: props.participant.isLocal
   });
   
   if (videoElement.value) {
@@ -130,6 +143,14 @@ onMounted(() => {
     if (tracks.length > 0) {
       const stream = new MediaStream(tracks);
       videoElement.value.srcObject = stream;
+      console.log('Initial stream set for', props.participant.name, 'with', tracks.length, 'tracks');
+      
+      // Force play
+      videoElement.value.play().catch(err => {
+        console.log('Autoplay prevented on mount:', err);
+      });
+    } else {
+      console.log('No tracks available on mount for', props.participant.name);
     }
   }
 });

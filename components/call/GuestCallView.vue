@@ -50,6 +50,13 @@
 <script setup>
 // Guest Call View - Minimal interface for family members joining via link
 // Uses Daily.co for video calling
+
+// Explicit imports for call components
+import CallVideoGrid from '~/components/call/VideoGrid.vue';
+import CallMuteButton from '~/components/call/MuteButton.vue';
+import CallCameraButton from '~/components/call/CameraButton.vue';
+import CallLeaveCallButton from '~/components/call/LeaveCallButton.vue';
+
 const props = defineProps({
   callId: {
     type: String,
