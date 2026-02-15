@@ -21,34 +21,87 @@ export const useRecording = () => {
       const participants = callObject.participants();
       const localParticipant = participants.local;
       
-      if (!localParticipant || !localParticipant.audioTrack || !localParticipant.videoTrack) {
-        throw new Error('Media tracks not available');
+      // Log what we have
+      console.log('Local participant:', {
+        exists: !!localParticipant,
+        hasAudio: !!(localParticipant?.tracks?.audio?.persistentTrack || 
+                     localParticipant?.tracks?.audio?.track ||
+                     localParticipant?.audioTrack),
+        hasVideo: !!(localParticipant?.tracks?.video?.persistentTrack || 
+                     localParticipant?.tracks?.video?.track ||
+                     localParticipant?.videoTrack)
+      });
+      
+      if (!localParticipant) {
+        throw new Error('Local participant not available');
+      }
+      
+      // Check for audio or video track availability using Daily.co structure
+      const hasAudioTrack = !!(localParticipant.tracks?.audio?.persistentTrack || 
+                               localParticipant.tracks?.audio?.track ||
+                               localParticipant.audioTrack);
+      
+      const hasVideoTrack = !!(localParticipant.tracks?.video?.persistentTrack || 
+                               localParticipant.tracks?.video?.track ||
+                               localParticipant.videoTrack);
+      
+      if (!hasAudioTrack && !hasVideoTrack) {
+        throw new Error('No audio or video tracks available - check camera/microphone permissions');
       }
 
       // Create a media stream with audio and video
       const stream = new MediaStream();
       
-      // Add local video track
-      if (localParticipant.videoTrack) {
-        stream.addTrack(localParticipant.videoTrack);
+      // Add local video track (Daily uses .tracks.video structure)
+      const videoTrack = localParticipant.tracks?.video?.persistentTrack || 
+                        localParticipant.tracks?.video?.track ||
+                        localParticipant.videoTrack;
+      
+      if (videoTrack) {
+        stream.addTrack(videoTrack);
+        console.log('✅ Added local video track');
+      } else {
+        console.warn('⚠️ No local video track available');
       }
       
-      // Add local audio track  
-      if (localParticipant.audioTrack) {
-        stream.addTrack(localParticipant.audioTrack);
+      // Add local audio track (Daily uses .tracks.audio structure)
+      const audioTrack = localParticipant.tracks?.audio?.persistentTrack || 
+                        localParticipant.tracks?.audio?.track ||
+                        localParticipant.audioTrack;
+      
+      if (audioTrack) {
+        stream.addTrack(audioTrack);
+        console.log('✅ Added local audio track');
+      } else {
+        console.warn('⚠️ No local audio track available');
       }
 
       // Add remote participants' tracks
       Object.values(participants).forEach(participant => {
         if (!participant.local) {
-          if (participant.audioTrack) {
-            stream.addTrack(participant.audioTrack);
+          const remoteAudio = participant.tracks?.audio?.persistentTrack || 
+                             participant.tracks?.audio?.track ||
+                             participant.audioTrack;
+          if (remoteAudio) {
+            stream.addTrack(remoteAudio);
+            console.log('✅ Added remote audio track from:', participant.user_name || 'Guest');
           }
-          if (participant.videoTrack) {
-            stream.addTrack(participant.videoTrack);
+          
+          const remoteVideo = participant.tracks?.video?.persistentTrack || 
+                             participant.tracks?.video?.track ||
+                             participant.videoTrack;
+          if (remoteVideo) {
+            stream.addTrack(remoteVideo);
+            console.log('✅ Added remote video track from:', participant.user_name || 'Guest');
           }
         }
       });
+      
+      if (stream.getTracks().length === 0) {
+        throw new Error('No media tracks could be added to stream');
+      }
+      
+      console.log('📹 Media stream created with', stream.getTracks().length, 'tracks');
 
       // Create MediaRecorder
       const options = { mimeType: 'video/webm;codecs=vp9,opus' };
@@ -105,22 +158,47 @@ export const useRecording = () => {
   const stopRecording = () => {
     return new Promise((resolve) => {
       try {
-        if (mediaRecorder && isRecording.value) {
-          // Set up one-time listener for stop event
-          mediaRecorder.addEventListener('stop', () => {
-            console.log('Recording stopped, blob size:', recordingBlob.value?.size);
-            isRecording.value = false;
-            resolve(recordingBlob.value);
-          }, { once: true });
-
-          mediaRecorder.stop();
-          
-          // Cleanup: Stop all tracks in the stream
-          if (mediaRecorder.stream) {
-            mediaRecorder.stream.getTracks().forEach(track => track.stop());
-          }
-        } else {
+        if (!mediaRecorder) {
+          console.warn('MediaRecorder was never initialized');
           resolve(null);
+          return;
+        }
+        
+        if (!isRecording.value) {
+          console.warn('Recording was not started');
+          resolve(recordingBlob.value || null);
+          return;
+        }
+        
+        // Set up one-time listener for stop event
+        const stopHandler = () => {
+          console.log('Recording stopped, blob created:', {
+            size: recordingBlob.value?.size,
+            type: recordingBlob.value?.type,
+            chunksCount: recordedChunks.length
+          });
+          isRecording.value = false;
+          resolve(recordingBlob.value);
+        };
+        
+        mediaRecorder.addEventListener('stop', stopHandler, { once: true });
+        
+        // Set timeout in case stop event doesn't fire
+        const timeout = setTimeout(() => {
+          console.error('Recording stop event timeout');
+          mediaRecorder.removeEventListener('stop', stopHandler);
+          isRecording.value = false;
+          resolve(recordingBlob.value);
+        }, 5000);
+        
+        mediaRecorder.stop();
+        
+        // Cleanup: Stop all tracks in the stream
+        if (mediaRecorder.stream) {
+          mediaRecorder.stream.getTracks().forEach(track => {
+            track.stop();
+            console.log('Stopped track:', track.kind);
+          });
         }
       } catch (error) {
         console.error('Error stopping recording:', error);

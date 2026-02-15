@@ -5,10 +5,10 @@ import { getDb } from '~/utils/firebase-admin'
 export default defineEventHandler(async (event) => {
   const { storyId, speakerName, audioUrl, videoUrl } = await readBody(event)
 
-  if (!storyId || !speakerName) {
+  if (!speakerName) {
     throw createError({
       statusCode: 400,
-      message: 'Missing required fields: storyId and speakerName'
+      message: 'Missing required field: speakerName'
     })
   }
 
@@ -28,9 +28,13 @@ export default defineEventHandler(async (event) => {
   // ── Save "processing" status to Firebase right away ────
   // Frontend can show a spinner while this runs
   const db = getDb()
-  const storyRef = db.collection('stories').doc(storyId)
+  const resolvedStoryId = typeof storyId === 'string' && storyId.trim() ? storyId.trim() : null
+  const storyRef = resolvedStoryId
+    ? db.collection('stories').doc(resolvedStoryId)
+    : db.collection('stories').doc()
+  const finalStoryId = storyRef.id
   await storyRef.set({
-    storyId,
+    storyId: finalStoryId,
     speakerName,
     audioUrl: mediaUrl,
     processingStatus: 'processing',
@@ -99,7 +103,7 @@ export default defineEventHandler(async (event) => {
 
     // ── Step 3: Save results to Firebase ───────────────────
     await storyRef.set({
-      storyId,
+      storyId: finalStoryId,
       speakerName,
       title,
       summary,
@@ -111,11 +115,11 @@ export default defineEventHandler(async (event) => {
       completedAt: new Date()
     }, { merge: true })
 
-    console.log(`Story saved to Firebase! storyId: ${storyId}`)
+    console.log(`Story saved to Firebase! storyId: ${finalStoryId}`)
 
     return {
       success: true,
-      storyId,
+      storyId: finalStoryId,
       data: {
         title,
         summary,

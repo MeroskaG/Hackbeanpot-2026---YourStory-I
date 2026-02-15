@@ -123,9 +123,12 @@ const participantNames = computed(() => {
 onMounted(async () => {
   try {
     const hostName = 'Host';
+    console.log('Joining Daily room...');
     await joinRoom(props.roomUrl, hostName);
+    console.log('✅ Successfully joined Daily room');
     
     // Start local browser recording
+    console.log('Initializing recording...');
     await startLocalRecording();
     
     // Update call participants
@@ -134,7 +137,7 @@ onMounted(async () => {
     });
   } catch (error) {
     console.error('Error joining room:', error);
-    alert('Failed to join call');
+    alert('Failed to join call: ' + error.message);
     emit('leave');
   }
 });
@@ -142,18 +145,46 @@ onMounted(async () => {
 // Start MediaRecorder-based local recording
 const startLocalRecording = async () => {
   try {
-    // Wait a moment for Daily to fully connect
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Wait for Daily to fully connect and initialize tracks
+    // This needs longer than 1 second to ensure participants are ready
+    let retries = 0;
+    let tracksReady = false;
     
-    const callObject = getCallObject();
-    if (callObject) {
-      await startRecording(callObject);
-      console.log('MediaRecorder local recording started');
-    } else {
-      console.warn('Call object not available');
+    while (retries < 5 && !tracksReady) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const callObject = getCallObject();
+      if (callObject) {
+        const participants = callObject.participants();
+        const localParticipant = participants.local;
+        
+        // Check if we have at least some tracks using Daily.co structure
+        const hasAudioTrack = !!(localParticipant?.tracks?.audio?.persistentTrack || 
+                                 localParticipant?.tracks?.audio?.track ||
+                                 localParticipant?.audioTrack);
+        const hasVideoTrack = !!(localParticipant?.tracks?.video?.persistentTrack || 
+                                 localParticipant?.tracks?.video?.track ||
+                                 localParticipant?.videoTrack);
+        
+        if (localParticipant && (hasAudioTrack || hasVideoTrack)) {
+          tracksReady = true;
+          console.log('✅ Media tracks ready, starting MediaRecorder');
+          
+          await startRecording(callObject);
+          console.log('✅ Recording started successfully');
+          return;
+        }
+      }
+      retries++;
+      console.log(`⏳ Waiting for media tracks... (attempt ${retries}/5)`);
     }
+    
+    // If we got here, tracks were never ready
+    console.error('❌ Media tracks not available after 5 seconds. Recording will not be captured.');
+    alert('⚠️ Could not initialize recording. Check that your camera/microphone permissions are allowed.');
   } catch (error) {
-    console.error('Error starting MediaRecorder recording:', error);
+    console.error('❌ Error starting MediaRecorder recording:', error);
+    alert('⚠️ Recording initialization failed: ' + error.message);
   }
 };
 

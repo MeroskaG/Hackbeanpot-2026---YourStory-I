@@ -1,8 +1,8 @@
 // server/api/elevenlabs/transcribe.js
 // -------------------------------------------------------
 // Transcribes an mp4 from Firebase Storage using ElevenLabs
-// Uses cloud_storage_url parameter so we don't need to 
-// download the file first — ElevenLabs fetches it directly!
+// Uses cloud_storage_url parameter so we don't need to
+// download the file first - ElevenLabs fetches it directly!
 //
 // POST /api/elevenlabs/transcribe
 // Body: { audioUrl, speakerName }
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
 
     // Build the form data
     // We use cloud_storage_url so ElevenLabs fetches the mp4 directly
-    // from Firebase — no need to download it ourselves first!
+    // from Firebase - no need to download it ourselves first!
     const formData = new FormData()
     formData.append('model_id', 'scribe_v2')
     formData.append('cloud_storage_url', audioUrl)
@@ -69,7 +69,7 @@ export default defineEventHandler(async (event) => {
     // result.language_code tells us what language was detected
     const language = result.language_code || 'unknown'
 
-    console.log(`Transcription complete!`)
+    console.log('Transcription complete!')
     console.log(`Language detected: ${language}`)
     console.log(`Characters: ${transcript.length}`)
     console.log(`Preview: ${transcript.substring(0, 150)}...`)
@@ -81,7 +81,6 @@ export default defineEventHandler(async (event) => {
       speakerName,
       characterCount: transcript.length
     }
-
   } catch (error) {
     console.error('ElevenLabs transcription failed:', error.message)
     throw createError({
