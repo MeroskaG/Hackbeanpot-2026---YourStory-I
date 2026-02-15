@@ -9,6 +9,7 @@ import {
   query, 
   where,
   orderBy,
+  onSnapshot,
   Timestamp 
 } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -193,6 +194,46 @@ export const useFirebase = () => {
     }
   };
 
+  // Subscribe to all stories (real-time)
+  const subscribeToAllStories = (callback) => {
+    const q = query(collection(db, 'stories'), orderBy('timestamp', 'desc'));
+    return onSnapshot(q, (querySnapshot) => {
+      const stories = querySnapshot.docs.map(doc => ({
+        storyId: doc.id,
+        ...doc.data()
+      }));
+      callback(stories);
+    });
+  };
+
+  // Subscribe to stories by speaker (real-time)
+  const subscribeToStoriesBySpeaker = (speakerName, callback) => {
+    const q = query(
+      collection(db, 'stories'),
+      where('speakerName', '==', speakerName),
+      orderBy('timestamp', 'desc')
+    );
+    return onSnapshot(q, (querySnapshot) => {
+      const stories = querySnapshot.docs.map(doc => ({
+        storyId: doc.id,
+        ...doc.data()
+      }));
+      callback(stories);
+    });
+  };
+
+  // Subscribe to a single story (real-time)
+  const subscribeToStory = (storyId, callback) => {
+    const docRef = doc(db, 'stories', storyId);
+    return onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        callback({ storyId: docSnap.id, ...docSnap.data() });
+      } else {
+        callback(null);
+      }
+    });
+  };
+
   return {
     // Call operations
     createCall,
@@ -211,6 +252,9 @@ export const useFirebase = () => {
     uploadFile,
     
     // Family members
-    getFamilyMembers
+    getFamilyMembers,
+    subscribeToAllStories,
+    subscribeToStoriesBySpeaker,
+    subscribeToStory
   };
 };

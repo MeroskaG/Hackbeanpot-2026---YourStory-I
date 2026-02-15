@@ -155,25 +155,54 @@
 
 <script setup>
 // Collections Page - Shows family members and their stories
-const { createCall, getFamilyMembers } = useFirebase();
+const { createCall, subscribeToAllStories } = useFirebase();
 const router = useRouter();
 
 const loading = ref(true);
 const creatingCall = ref(false);
 const familyMembers = ref([]);
+const stories = ref([]);
 const showInviteModal = ref(false);
 const currentCallId = ref('');
+let unsubscribeStories = null;
 
 // Load family members on mount
-onMounted(async () => {
+onMounted(() => {
   try {
-    familyMembers.value = await getFamilyMembers();
+    unsubscribeStories = subscribeToAllStories((allStories) => {
+      stories.value = allStories;
+      familyMembers.value = buildFamilyMembers(allStories);
+      loading.value = false;
+    });
   } catch (error) {
     console.error('Error loading family members:', error);
-  } finally {
     loading.value = false;
   }
 });
+
+onBeforeUnmount(() => {
+  if (typeof unsubscribeStories === 'function') {
+    unsubscribeStories();
+  }
+});
+
+const buildFamilyMembers = (allStories) => {
+  const speakerMap = new Map();
+
+  allStories.forEach((story) => {
+    if (story.speakerName) {
+      if (!speakerMap.has(story.speakerName)) {
+        speakerMap.set(story.speakerName, {
+          name: story.speakerName,
+          storiesCount: 0
+        });
+      }
+      speakerMap.get(story.speakerName).storiesCount++;
+    }
+  });
+
+  return Array.from(speakerMap.values());
+};
 
 // Go back to home
 const goHome = () => {

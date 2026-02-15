@@ -55,20 +55,29 @@
 // Collections Detail Page - Shows stories for a specific family member
 const route = useRoute();
 const router = useRouter();
-const { getStoriesBySpeaker } = useFirebase();
+const { subscribeToStoriesBySpeaker } = useFirebase();
 
 const memberName = computed(() => decodeURIComponent(route.params.memberId));
 const loading = ref(true);
 const stories = ref([]);
+let unsubscribeStories = null;
 
 // Load stories on mount
-onMounted(async () => {
+onMounted(() => {
   try {
-    stories.value = await getStoriesBySpeaker(memberName.value);
+    unsubscribeStories = subscribeToStoriesBySpeaker(memberName.value, (results) => {
+      stories.value = results;
+      loading.value = false;
+    });
   } catch (error) {
     console.error('Error loading stories:', error);
-  } finally {
     loading.value = false;
+  }
+});
+
+onBeforeUnmount(() => {
+  if (typeof unsubscribeStories === 'function') {
+    unsubscribeStories();
   }
 });
 

@@ -125,21 +125,31 @@
 // Story Detail Page - View individual story with video, summary, transcript
 const route = useRoute();
 const router = useRouter();
-const { getStory } = useFirebase();
+const { getStory, subscribeToStory } = useFirebase();
 
 const storyId = computed(() => route.params.id);
 const loading = ref(true);
 const story = ref(null);
 const showTranscript = ref(false);
+let unsubscribeStory = null;
 
 // Load story on mount
 onMounted(async () => {
   try {
     story.value = await getStory(storyId.value);
+    unsubscribeStory = subscribeToStory(storyId.value, (doc) => {
+      story.value = doc;
+      loading.value = false;
+    });
   } catch (error) {
     console.error('Error loading story:', error);
-  } finally {
     loading.value = false;
+  }
+});
+
+onBeforeUnmount(() => {
+  if (typeof unsubscribeStory === 'function') {
+    unsubscribeStory();
   }
 });
 
