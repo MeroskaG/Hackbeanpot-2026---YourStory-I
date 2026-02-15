@@ -20,8 +20,25 @@
         </p>
       </div>
 
+      <!-- Loading State -->
+      <div v-if="loading" class="text-center py-12">
+        <Icon name="lucide:loader-2" size="48" class="text-white animate-spin mx-auto mb-4" />
+        <p class="text-white/80 text-lg">Loading your family stories...</p>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="error" class="text-center py-12">
+        <p class="text-red-400 text-lg">{{ error }}</p>
+      </div>
+
+      <!-- Empty State -->
+      <div v-else-if="stories.length === 0" class="text-center py-12">
+        <Icon name="lucide:book-open" size="64" class="text-white/50 mx-auto mb-4" />
+        <p class="text-white/80 text-lg">No stories yet. Start recording to create your first story!</p>
+      </div>
+
       <!-- Story Cards Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div
           v-for="(story, index) in stories"
           :key="story.id"
@@ -130,12 +147,21 @@
               {{ selectedStory.summary }}
             </p>
 
-            <button
-              @click="selectedStory = null"
-              class="bg-teal-600 text-white px-8 py-3 rounded-full font-medium hover:bg-teal-700 transition-colors shadow-lg inline-flex items-center gap-2"
-            >
-              Back to Library 📚
-            </button>
+            <div class="flex gap-4">
+              <button
+                @click="viewFullStory(selectedStory)"
+                class="bg-teal-600 text-white px-8 py-3 rounded-full font-medium hover:bg-teal-700 transition-colors shadow-lg inline-flex items-center gap-2"
+              >
+                <Icon name="mdi:play-circle" size="20" />
+                View Full Story
+              </button>
+              <button
+                @click="selectedStory = null"
+                class="bg-gray-200 text-gray-700 px-8 py-3 rounded-full font-medium hover:bg-gray-300 transition-colors inline-flex items-center gap-2"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -145,65 +171,56 @@
 
 <script setup lang="ts">
 interface Story {
-  id: number
+  id?: string
+  storyId?: string
   title: string
-  storyteller: string
-  summary: string
-  image: string
-  tags: string[]
+  storyteller?: string
+  speakerName?: string
+  summary?: string
+  processedSummary?: string
+  image?: string
+  videoUrl?: string
+  tags?: string[]
 }
-import { ref } from 'vue' 
 
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 const selectedStory = ref<Story | null>(null)
+const stories = ref<Story[]>([])
+const loading = ref(true)
+const error = ref('')
 
-const stories: Story[] = [
-  {
-    id: 1,
-    title: 'Summer at the Lake House',
-    storyteller: 'Grandpa Joe',
-    summary: "Grandpa Joe recounts the summer of '65 when the family built the lakeside cabin by hand. A story of hard work, cool waters, and the biggest bass ever caught.",
-    image: 'https://images.unsplash.com/photo-1631535152690-ba1a85229136?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cm9waWNhbCUyMGJlYWNoJTIwc3Vuc2V0JTIwb2NlYW58ZW58MXx8fHwxNzcxMDk4OTU1fDA&ixlib=rb-4.1.0&q=80&w=1080',
-    tags: ['Childhood', 'Summer', 'Family Traditions'],
-  },
-  {
-    id: 2,
-    title: 'Meeting Grandmother for the First Time',
-    storyteller: 'Uncle James',
-    summary: "The heart-warming tale of a chance encounter at a rain-drenched bus stop in London. Joe describes the yellow umbrella that changed his life forever.",
-    image: 'https://images.unsplash.com/photo-1768689053098-9a4b8331c6f7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxldXJvcGVhbiUyMGNpdHklMjBjYW5hbCUyMGhpc3RvcmljfGVufDF8fHx8MTc3MTA5ODk1NXww&ixlib=rb-4.1.0&q=80&w=1080',
-    tags: ['Romance', 'London', '1960s'],
-  },
-  {
-    id: 3,
-    title: 'The Great Migration',
-    storyteller: 'Nana Maria',
-    summary: "Nana shares the perilous journey the family took across the mountains. She details the kindness of strangers and the first time she saw the ocean.",
-    image: 'https://images.unsplash.com/photo-1683041133891-613b76cbebc7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb3VudGFpbiUyMGxha2UlMjBzY2VuaWMlMjBsYW5kc2NhcGV8ZW58MXx8fHwxNzcxMDk4OTU2fDA&ixlib=rb-4.1.0&q=80&w=1080',
-    tags: ['History', 'Resilience', 'Travel'],
-  },
-  {
-    id: 4,
-    title: 'The Secret Garden',
-    storyteller: 'Aunt Betty',
-    summary: "Aunt Betty recalls her childhood haven - a hidden garden behind the old house where she spent countless hours dreaming and playing.",
-    image: 'https://images.unsplash.com/photo-1770871821382-60ea99b0a941?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW1pbHklMjBnYXJkZW4lMjBjaGlsZGhvb2QlMjBob21lfGVufDF8fHx8MTc3MTA5ODk1Nnww&ixlib=rb-4.1.0&q=80&w=1080',
-    tags: ['Childhood', 'Nature', 'Memories'],
-  },
-  {
-    id: 5,
-    title: 'The Wedding That Almost Wasn\'t',
-    storyteller: 'Mom & Dad',
-    summary: "A hilarious and heartwarming tale of mishaps on their wedding day - from the missing rings to the cake disaster that somehow made everything perfect.",
-    image: 'https://images.unsplash.com/photo-1763154431754-4be005ac6ad9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3ZWRkaW5nJTIwY2VsZWJyYXRpb24lMjB2aW50YWdlJTIwcGhvdG98ZW58MXx8fHwxNzcxMDk4OTU3fDA&ixlib=rb-4.1.0&q=80&w=1080',
-    tags: ['Wedding', 'Romance', 'Family'],
-  },
-  {
-    id: 6,
-    title: 'Grandma\'s Secret Recipe',
-    storyteller: 'Grandma Rose',
-    summary: "Grandma Rose shares the story behind her famous apple pie recipe, passed down through four generations, and the secret ingredient that makes it special.",
-    image: 'https://images.unsplash.com/photo-1758874960533-a0925d4f645c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxncmFuZG1vdGhlciUyMGtpdGNoZW4lMjBjb29raW5nJTIwdHJhZGl0aW9uYWx8ZW58MXx8fHwxNzcxMDk4OTU3fDA&ixlib=rb-4.1.0&q=80&w=1080',
-    tags: ['Cooking', 'Tradition', 'Family Recipe'],
-  },
-]
+// Fetch real stories from the API
+onMounted(async () => {
+  try {
+    const response = await $fetch('/api/stories/list')
+    if (response.success && response.stories) {
+      // Map API data to component format
+      stories.value = response.stories.map((story: any) => ({
+        id: story.id || story.storyId,
+        title: story.title || 'Untitled Story',
+        storyteller: story.speakerName || 'Unknown',
+        summary: story.summary || 'No summary available',
+        image: story.audioUrl || story.videoUrl || 'https://images.unsplash.com/photo-1631535152690-ba1a85229136?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cm9waWNhbCUyMGJlYWNoJTIwc3Vuc2V0JTIwb2NlYW58ZW58MXx8fHwxNzcxMDk4OTU1fDA&ixlib=rb-4.1.0&q=80&w=1080',
+        tags: story.tags || []
+      }))
+      console.log(`Loaded ${stories.value.length} stories from database`)
+    }
+  } catch (err: any) {
+    console.error('Error fetching stories:', err)
+    error.value = err.message || 'Failed to load stories'
+  } finally {
+    loading.value = false
+  }
+})
+
+// Navigate to full story page
+const viewFullStory = (story: Story) => {
+  const storyId = story.id || story.storyId
+  if (storyId) {
+    router.push(`/stories/${storyId}`)
+  }
+}
 </script>

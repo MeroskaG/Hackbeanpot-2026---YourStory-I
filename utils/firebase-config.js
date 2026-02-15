@@ -16,6 +16,15 @@ export const useFirebaseConfig = () => {
     appId: config.public.firebaseAppId
   };
 
+  console.log('🔵 Firebase Config:', {
+    apiKey: firebaseConfig.apiKey ? '✓ Set' : '✗ Missing',
+    authDomain: firebaseConfig.authDomain ? '✓ Set' : '✗ Missing',
+    projectId: firebaseConfig.projectId ? '✓ Set' : '✗ Missing',
+    storageBucket: firebaseConfig.storageBucket ? '✓ Set' : '✗ Missing',
+    messagingSenderId: firebaseConfig.messagingSenderId ? '✓ Set' : '✗ Missing',
+    appId: firebaseConfig.appId ? '✓ Set' : '✗ Missing'
+  });
+
   return firebaseConfig;
 };
 
@@ -26,11 +35,13 @@ let storage;
 
 export const initializeFirebase = () => {
   if (!app) {
+    console.log('🔵 Initializing Firebase...');
     const config = useFirebaseConfig();
     app = initializeApp(config);
     auth = getAuth(app);
     db = getFirestore(app);
     storage = getStorage(app);
+    console.log('🟢 Firebase initialized successfully');
   }
   
   return { app, auth, db, storage };

@@ -31,6 +31,19 @@
         <p class="text-gray-600 mt-4">Loading stories...</p>
       </div>
 
+      <!-- Error State -->
+      <div v-else-if="error" class="text-center py-12">
+        <div class="text-6xl mb-4">⚠️</div>
+        <h2 class="text-2xl font-semibold text-gray-900 mb-2">Error Loading Stories</h2>
+        <p class="text-red-600 mb-4">{{ error }}</p>
+        <button 
+          @click="router.push('/collections')"
+          class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Back to Collections
+        </button>
+      </div>
+
       <!-- Empty State -->
       <div v-else-if="stories.length === 0" class="text-center py-12">
         <div class="text-6xl mb-4">📖</div>
@@ -60,17 +73,35 @@ const { subscribeToStoriesBySpeaker } = useFirebase();
 const memberName = computed(() => decodeURIComponent(route.params.memberId));
 const loading = ref(true);
 const stories = ref([]);
+const error = ref(null);
 let unsubscribeStories = null;
 
 // Load stories on mount
 onMounted(() => {
+  console.log('🔵 [memberId] page mounted');
+  console.log('🔵 Member name:', memberName.value);
+  console.log('🔵 Route params:', route.params);
+  
   try {
-    unsubscribeStories = subscribeToStoriesBySpeaker(memberName.value, (results) => {
-      stories.value = results;
-      loading.value = false;
-    });
-  } catch (error) {
-    console.error('Error loading stories:', error);
+    console.log('🔵 Subscribing to stories for:', memberName.value);
+    unsubscribeStories = subscribeToStoriesBySpeaker(
+      memberName.value, 
+      (results) => {
+        console.log('🟢 Stories received:', results.length, results);
+        stories.value = results;
+        loading.value = false;
+        error.value = null;
+      },
+      (err) => {
+        console.error('🔴 Error loading stories:', err);
+        error.value = err.message || 'Failed to load stories';
+        loading.value = false;
+      }
+    );
+    console.log('🔵 Subscription created');
+  } catch (err) {
+    console.error('🔴 Error in onMounted:', err);
+    error.value = err.message || 'Failed to load stories';
     loading.value = false;
   }
 });

@@ -51,6 +51,14 @@ export default defineNuxtConfig({
     '~/assets/css/main.css'
   ],
 
+  // Component auto-import configuration
+  components: [
+    {
+      path: '~/components',
+      pathPrefix: false,
+    }
+  ],
+
   // Disable SSR for WebRTC compatibility
   ssr: false
 })

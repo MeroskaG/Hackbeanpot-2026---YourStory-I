@@ -37,9 +37,9 @@
       </div>
 
       <!-- View Button -->
-      <button class="btn-secondary self-center">
+      <div class="btn-secondary self-center pointer-events-none">
         View
-      </button>
+      </div>
     </div>
   </div>
 </template>

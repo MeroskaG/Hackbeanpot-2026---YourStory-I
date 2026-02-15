@@ -232,19 +232,47 @@ export const useFirebase = () => {
   };
 
   // Subscribe to stories by speaker (real-time)
-  const subscribeToStoriesBySpeaker = (speakerName, callback) => {
+  const subscribeToStoriesBySpeaker = (speakerName, callback, errorCallback) => {
+    console.log('🔵 Firebase: subscribeToStoriesBySpeaker called with:', speakerName);
+    console.log('🔵 Firebase: db instance:', db ? 'exists' : 'null');
+    
+    // Query without orderBy to avoid composite index requirement
+    // We'll sort in JavaScript instead
     const q = query(
       collection(db, 'stories'),
-      where('speakerName', '==', speakerName),
-      orderBy('timestamp', 'desc')
+      where('speakerName', '==', speakerName)
     );
-    return onSnapshot(q, (querySnapshot) => {
-      const stories = querySnapshot.docs.map(doc => ({
-        storyId: doc.id,
-        ...doc.data()
-      }));
-      callback(stories);
-    });
+    console.log('🔵 Firebase: Query created, setting up snapshot listener...');
+    
+    return onSnapshot(q, 
+      (querySnapshot) => {
+        console.log('🟢 Firebase: Snapshot received, docs count:', querySnapshot.docs.length);
+        const stories = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          console.log('🟢 Firebase: Story doc:', doc.id, data);
+          return {
+            storyId: doc.id,
+            ...data
+          };
+        });
+        // Sort by timestamp in JavaScript (newest first)
+        stories.sort((a, b) => {
+          const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
+          const timeB = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
+          return timeB - timeA;
+        });
+        console.log('🟢 Firebase: Returning sorted stories:', stories.length);
+        callback(stories);
+      },
+      (error) => {
+        console.error('🔴 Firebase: Error in subscribeToStoriesBySpeaker:', error);
+        console.error('🔴 Firebase: Error code:', error.code);
+        console.error('🔴 Firebase: Error message:', error.message);
+        if (errorCallback) {
+          errorCallback(error);
+        }
+      }
+    );
   };
 
   // Subscribe to a single story (real-time)

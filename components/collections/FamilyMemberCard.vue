@@ -31,10 +31,10 @@
       </p>
 
       <!-- View Button -->
-      <button class="bg-white/30 hover:bg-white/40 backdrop-blur-sm border border-white/40 text-white px-6 py-2 rounded-full font-semibold transition-all w-full flex items-center justify-center gap-2">
+      <div class="bg-white/30 hover:bg-white/40 backdrop-blur-sm border border-white/40 text-white px-6 py-2 rounded-full font-semibold transition-all w-full flex items-center justify-center gap-2">
         <Icon name="lucide:eye" size="16" />
-        View Stories
-      </button>
+        <span>View Stories</span>
+      </div>
     </div>
   </div>
 </template>
