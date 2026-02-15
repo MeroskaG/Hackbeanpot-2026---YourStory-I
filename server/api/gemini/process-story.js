@@ -2,8 +2,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export default defineEventHandler(async (event) => {
-
-  const { storyId, speakerName, transcript } = await readBody(event)
+  const { storyId, speakerName, audioUrl } = await readBody(event)
 
   if (!storyId || !speakerName) {
     throw createError({
@@ -12,29 +11,62 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const apiKey = process.env.GEMINI_API_KEY
+  const geminiKey = process.env.GEMINI_API_KEY
+  const elevenLabsKey = process.env.ELEVENLABS_API_KEY
 
-  if (!apiKey) {
+  if (!geminiKey) {
     throw createError({
       statusCode: 500,
       message: 'Missing GEMINI_API_KEY in .env file'
     })
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey)
+  let transcript = ''
+
+  if (audioUrl && elevenLabsKey) {
+    try {
+      console.log('Sending mp4 to ElevenLabs...')
+      const formData = new FormData()
+      formData.append('model_id', 'scribe_v2')
+      formData.append('cloud_storage_url', audioUrl)
+      formData.append('diarize', 'true')
+      formData.append('tag_audio_events', 'true')
+
+      const transcribeResponse = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+        method: 'POST',
+        headers: { 'xi-api-key': elevenLabsKey },
+        body: formData
+      })
+
+      if (transcribeResponse.ok) {
+        const result = await transcribeResponse.json()
+        transcript = result.text || ''
+        console.log(`Transcription done! ${transcript.length} characters`)
+      } else {
+        const err = await transcribeResponse.text()
+        console.error('ElevenLabs error:', err)
+      }
+    } catch (transcribeError) {
+      console.error('Transcription failed:', transcribeError.message)
+    }
+  } else {
+    console.log('No audioUrl — using placeholder')
+  }
+
+  if (!transcript) {
+    transcript = `This is a story shared by ${speakerName} during a family video call.`
+  }
+
+  const genAI = new GoogleGenerativeAI(geminiKey)
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
-  const storyText = transcript || `This is a placeholder story told by ${speakerName}. In production this would be the real transcript from the audio recording.`
-
   try {
+    console.log('Running Gemini AI...')
+
     const [titleResult, summaryResult, tagsResult] = await Promise.all([
-
-      model.generateContent(`Create a short title (5-8 words) for this family story. Return ONLY the title, nothing else. Story by ${speakerName}: ${storyText.substring(0, 500)}`),
-
-      model.generateContent(`You are preserving a family story. Write a warm 1 paragraph summary in third (e.g. "she remembers.."). If the story seems  incomplete, write a beautiful placeholder summary about ${speakerName} sharing family memories. Story: ${storyText}`),
-
-      model.generateContent(`Extract 3-5 thematic tags from this family story. Choose from: Childhood, Immigration, War, Love, Family, Food, Work, Faith, Travel, Loss, Achievement, Culture, Humor, Home. Return ONLY comma-separated tags, nothing else. Story: ${storyText.substring(0, 1000)}`)
-
+      model.generateContent(`Create a short title (5-8 words) for this family story. Return ONLY the title. Story by ${speakerName}: ${transcript.substring(0, 500)}`),
+      model.generateContent(`You are preserving a family story. Write a warm 1 paragraph summary in third person (e.g. "She remembers..."). If the story seems incomplete, write a beautiful placeholder summary about ${speakerName} sharing family memories. Story: ${transcript}`),
+      model.generateContent(`Extract 3-5 thematic tags from this family story. Choose from: Childhood, Immigration, War, Love, Family, Food, Work, Faith, Travel, Loss, Achievement, Culture, Humor, Home. Return ONLY comma-separated tags. Story: ${transcript.substring(0, 1000)}`)
     ])
 
     const title = titleResult.response.text().trim().replace(/['"]/g, '')
@@ -44,6 +76,8 @@ export default defineEventHandler(async (event) => {
       .map(t => t.trim())
       .filter(t => t.length > 0)
 
+    console.log(`Done! Title: ${title}`)
+
     return {
       success: true,
       storyId,
@@ -51,7 +85,8 @@ export default defineEventHandler(async (event) => {
         title,
         summary,
         tags,
-        transcript: storyText,
+        transcript,
+        audioUrl: audioUrl || null,
         aiProcessed: true,
         processingStatus: 'complete'
       }
