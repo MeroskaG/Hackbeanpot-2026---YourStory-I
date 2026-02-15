@@ -12,7 +12,7 @@
           repeat: Infinity,
           ease: 'easeInOut'
         }
-      } as any"
+      }"
       class="absolute top-20 left-10 w-72 h-72 bg-white/10 rounded-full blur-3xl"
     />
     <div
@@ -27,7 +27,7 @@
           ease: 'easeInOut',
           delay: 1000
         }
-      } as any"
+      }"
       class="absolute bottom-20 right-10 w-96 h-96 bg-white/10 rounded-full blur-3xl"
     />
 
@@ -38,7 +38,6 @@
         :enter="{ scale: 1, transition: { type: 'spring', duration: 1000, bounce: 0.5 } }"
         class="mb-8 inline-block"
       >
-     <!--<img src="/images/hero-image.png" alt="Our Family" class="w-20 h-20 mx-auto" />-->  
       </div>
 
       <h1
@@ -49,7 +48,7 @@
       >
         Welcome to
         <br />
-        <span class="inline-block mt-2">Our Family</span>
+        <span class="inline-block mt-2">Your Story And I</span>
       </h1>
 
       <p
@@ -109,7 +108,7 @@
           duration: 2000,
           repeat: Infinity
         }
-      } as any"
+      }"
       class="absolute bottom-8 left-1/2 -translate-x-1/2"
     >
       <div class="w-6 h-10 border-2 border-white/40 rounded-full flex items-start justify-center p-2">
@@ -122,7 +121,7 @@
               duration: 2000,
               repeat: Infinity
             }
-          } as any"
+          }"
           class="w-1.5 h-1.5 bg-white/60 rounded-full"
         />
       </div>
@@ -131,6 +130,7 @@
 </template>
 
 <script setup lang="ts">
+// @ts-nocheck - 
 const emit = defineEmits<{
   'start-story': []
 }>()

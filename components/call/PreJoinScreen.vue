@@ -12,7 +12,7 @@
           repeat: Infinity,
           ease: 'easeInOut'
         }
-      } as any"
+      }"
       class="absolute top-20 left-10 w-72 h-72 bg-white/10 rounded-full blur-3xl"
     />
     <div
@@ -27,7 +27,7 @@
           ease: 'easeInOut',
           delay: 1000
         }
-      } as any"
+      }"
       class="absolute bottom-20 right-10 w-96 h-96 bg-white/10 rounded-full blur-3xl"
     />
 

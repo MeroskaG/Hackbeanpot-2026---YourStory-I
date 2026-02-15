@@ -16,7 +16,7 @@
             duration: 2000,
             repeat: Infinity
           }
-        } as any"
+        }"
         class="w-3 h-3 bg-white rounded-full"
       ></div>
       <span class="text-white font-semibold flex items-center gap-2">
