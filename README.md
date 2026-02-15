@@ -60,6 +60,7 @@ Family stories and cultural heritage are often lost across generations. This app
 ### Frontend
 - **Framework**: Nuxt 3 (Vue 3)
 - **Styling**: Tailwind CSS
+- **UI/UX Design**: Figma
 - **State Management**: Pinia
 - **Video/Audio**: Daily.co (WebRTC platform)
 
